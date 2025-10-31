@@ -1,0 +1,2929 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Nhà Trọ - Web Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .modal-backdrop {
+            background-color: rgba(0,0,0,0.5);
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s ease;
+        }
+        .sidebar-item.active {
+            background-color: #e6f7ff;
+            color: #1890ff;
+            border-right: 3px solid #1890ff;
+            font-weight: 600;
+        }
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-approved { background-color: #d4edda; color: #155724; }
+        .status-pending { background-color: #fff3cd; color: #856404; }
+        .dropdown-arrow {
+            transition: transform 0.3s ease;
+        }
+        .dropdown-content {
+            display: none;
+        }
+        .dropdown-content.show {
+            display: block !important;
+        }
+        .dropdown-arrow.rotated {
+            transform: rotate(180deg);
+        }
+        
+        /* Date input styles */
+        input[type="date"] {
+            cursor: pointer;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+        }
+        
+        /* Print styles */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #bill-detail-modal, #bill-detail-printable, #bill-detail-printable * {
+                visibility: visible;
+            }
+            #bill-detail-modal {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                overflow: visible;
+                box-shadow: none;
+                border: none;
+            }
+            .modal-backdrop {
+                background-color: transparent !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100">
+
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white shadow-md flex-shrink-0">
+            <div class="p-4 text-center bg-blue-600 text-white text-xl font-bold">
+                QUẢN LÝ NHÀ TRỌ
+            </div>
+            <nav class="mt-4">
+                <a href="#" class="block py-3 px-4 text-gray-700 sidebar-item">📊 Bảng tin</a>
+                <div class="dropdown-menu">
+                    <button class="dropdown-toggle w-full text-left py-3 px-4 text-gray-700 sidebar-item flex justify-between items-center">
+                        <span>📋 Danh mục dữ liệu</span>
+                        <span class="dropdown-arrow text-xs">▼</span>
+                    </button>
+                    <div class="dropdown-content ml-4 hidden">
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="buildings-btn">🏢 Tòa nhà</a>
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="services-btn">💰 Phí dịch vụ</a>
+                    </div>
+                </div>
+                <div class="dropdown-menu">
+                    <button class="dropdown-toggle w-full text-left py-3 px-4 text-gray-700 sidebar-item flex justify-between items-center">
+                        <span>👥 Khách hàng</span>
+                        <span class="dropdown-arrow text-xs">▼</span>
+                    </button>
+                    <div class="dropdown-content ml-4 hidden">
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="contracts-btn">📋 Hợp đồng thuê</a>
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="customers-btn">👤 Khách</a>
+                    </div>
+                </div>
+                <div class="dropdown-menu">
+                    <button class="dropdown-toggle w-full text-left py-3 px-4 text-gray-700 sidebar-item flex justify-between items-center active">
+                        <span>💰 Tài chính</span>
+                        <span class="dropdown-arrow text-xs">▼</span>
+                    </button>
+                    <div class="dropdown-content ml-4 hidden">
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="bills-btn">📄 Hóa đơn</a>
+                        <a href="#" class="block py-2 px-4 text-gray-600 hover:bg-gray-100" id="finance-btn">💸 Thu chi</a>
+                    </div>
+                </div>
+                <a href="#" class="block py-3 px-4 text-gray-700 sidebar-item">📊 Ghi chi số</a>
+                <a href="#" class="block py-3 px-4 text-gray-700 sidebar-item">📈 Báo cáo</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col overflow-hidden">
+            <header class="bg-white shadow-sm p-4 flex justify-between items-center">
+                 <h1 class="text-xl font-semibold text-gray-800" id="main-header-title">Danh sách Hóa đơn</h1>
+                 <div class="user-info flex items-center gap-3">
+                     <span class="font-medium">Đặng Nhật Anh</span>
+                     <img src="https://placehold.co/40x40/E2E8F0/4A5568?text=A" class="rounded-full" alt="Avatar">
+                 </div>
+            </header>
+
+            <div class="flex-1 p-6 overflow-y-auto">
+                <!-- Buildings Section -->
+                <div id="buildings-section" class="hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h2 class="text-lg font-semibold">Quản lý Tòa nhà</h2>
+                            <button id="add-building-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                + Thêm Tòa nhà
+                            </button>
+                        </div>
+                        <div class="p-4">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-600 text-sm font-medium">
+                                        <th class="py-3 px-4">Mã</th>
+                                        <th class="py-3 px-4">Địa chỉ</th>
+                                        <th class="py-3 px-4">Số phòng</th>
+                                        <th class="py-3 px-4">Danh sách phòng</th>
+                                        <th class="py-3 px-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="buildings-list">
+                                    <!-- Buildings will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Section -->
+                <div id="services-section" class="hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h2 class="text-lg font-semibold">Quản lý Phí dịch vụ</h2>
+                            <button id="add-service-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                + Thêm Phí dịch vụ
+                            </button>
+                        </div>
+                        <div class="p-4">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-600 text-sm font-medium">
+                                        <th class="py-3 px-4">Tên dịch vụ</th>
+                                        <th class="py-3 px-4">Đơn giá</th>
+                                        <th class="py-3 px-4">Đơn vị</th>
+                                        <th class="py-3 px-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="services-list">
+                                    <!-- Services will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contracts Section -->
+                <div id="contracts-section" class="hidden">
+                    <!-- Contract Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Tổng Hợp đồng</h3>
+                            <p class="text-2xl font-bold text-blue-600" id="total-contracts">0</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Đang Thuê</h3>
+                            <p class="text-2xl font-bold text-green-600" id="active-contracts">0</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Sắp Hết Hạn</h3>
+                            <p class="text-2xl font-bold text-yellow-600" id="expiring-contracts">0</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Quá Hạn</h3>
+                            <p class="text-2xl font-bold text-red-600" id="expired-contracts">0</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h2 class="text-lg font-semibold">Quản lý Hợp đồng thuê</h2>
+                            <button id="add-contract-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                + Thêm Hợp đồng
+                            </button>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="p-4 border-b bg-gray-50">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tòa nhà</label>
+                                    <select id="filter-building" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả tòa nhà</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phòng</label>
+                                    <select id="filter-room" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả phòng</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                                    <select id="filter-status" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả trạng thái</option>
+                                        <option value="active">Đang thuê</option>
+                                        <option value="expiring">Sắp hết hạn</option>
+                                        <option value="expired">Quá hạn</option>
+                                        <option value="terminated">Đã thanh lý</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-600 text-sm font-medium">
+                                        <th class="py-3 px-4">Mã hợp đồng</th>
+                                        <th class="py-3 px-4">Khách hàng</th>
+                                        <th class="py-3 px-4">Bắt đầu</th>
+                                        <th class="py-3 px-4">Kết thúc</th>
+                                        <th class="py-3 px-4">Trạng thái</th>
+                                        <th class="py-3 px-4">Giá thuê</th>
+                                        <th class="py-3 px-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contracts-list">
+                                    <!-- Contracts will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Section -->
+                <div id="customers-section" class="hidden">
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h2 class="text-lg font-semibold">Quản lý Khách hàng</h2>
+                            <button id="add-customer-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                + Thêm Khách hàng
+                            </button>
+                        </div>
+                        <div class="p-4">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-600 text-sm font-medium">
+                                        <th class="py-3 px-4">Họ tên</th>
+                                        <th class="py-3 px-4">Số điện thoại</th>
+                                        <th class="py-3 px-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="customers-list">
+                                    <!-- Customers will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div id="main-section" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white p-5 rounded-lg shadow">
+                        <h3 class="text-sm font-medium text-gray-500">Tổng Phải Thu</h3>
+                        <p class="text-2xl font-bold text-blue-600" id="total-receivable">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow">
+                        <h3 class="text-sm font-medium text-gray-500">Đã Thanh Toán</h3>
+                        <p class="text-2xl font-bold text-green-600" id="total-paid">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow">
+                        <h3 class="text-sm font-medium text-gray-500">Còn Nợ</h3>
+                        <p class="text-2xl font-bold text-red-600" id="total-debt">0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow">
+                        <h3 class="text-sm font-medium text-gray-500">Số Hóa đơn</h3>
+                        <p class="text-2xl font-bold text-gray-800" id="total-bills-count">0</p>
+                    </div>
+                </div>
+
+                <!-- Bills Section -->
+                <div id="bills-section">
+                    <!-- Bill Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Tổng tiền</h3>
+                            <p class="text-2xl font-bold text-blue-600" id="total-bill-amount">0 VNĐ</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Đã thu</h3>
+                            <p class="text-2xl font-bold text-green-600" id="collected-amount">0 VNĐ</p>
+                        </div>
+                        <div class="bg-white p-5 rounded-lg shadow">
+                            <h3 class="text-sm font-medium text-gray-500">Phải thu</h3>
+                            <p class="text-2xl font-bold text-red-600" id="pending-amount">0 VNĐ</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+                        <div class="p-4 border-b flex justify-between items-center">
+                            <h2 class="text-lg font-semibold">Quản lý Hóa đơn</h2>
+                            <button id="add-bill-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                + Thêm Hóa đơn
+                            </button>
+                        </div>
+                        
+                        <!-- Filters -->
+                        <div class="p-4 border-b bg-gray-50">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tòa nhà</label>
+                                    <select id="filter-bill-building" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả tòa nhà</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Phòng</label>
+                                    <select id="filter-bill-room" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả phòng</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Tháng</label>
+                                    <select id="filter-bill-month" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả tháng</option>
+                                        <option value="1">Tháng 1</option>
+                                        <option value="2">Tháng 2</option>
+                                        <option value="3">Tháng 3</option>
+                                        <option value="4">Tháng 4</option>
+                                        <option value="5">Tháng 5</option>
+                                        <option value="6">Tháng 6</option>
+                                        <option value="7">Tháng 7</option>
+                                        <option value="8">Tháng 8</option>
+                                        <option value="9">Tháng 9</option>
+                                        <option value="10">Tháng 10</option>
+                                        <option value="11">Tháng 11</option>
+                                        <option value="12">Tháng 12</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                                    <select id="filter-bill-status" class="w-full p-2 border rounded-lg">
+                                        <option value="">Tất cả trạng thái</option>
+                                        <option value="unpaid">Chưa thanh toán</option>
+                                        <option value="paid">Đã thanh toán</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b text-left text-gray-600 text-sm font-medium">
+                                        <th class="py-3 px-4">Mã hóa đơn</th>
+                                        <th class="py-3 px-4">Khách hàng</th>
+                                        <th class="py-3 px-4">Kỳ thanh toán</th>
+                                        <th class="py-3 px-4">Ngày lập</th>
+                                        <th class="py-3 px-4">Tổng tiền</th>
+                                        <th class="py-3 px-4">Trạng thái</th>
+                                        <th class="py-3 px-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bills-list">
+                                    <!-- Bills will be populated here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add/Edit Building Modal -->
+    <div id="building-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg modal-content transform scale-95">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold" id="building-modal-title">Thêm Tòa nhà</h3>
+                <button id="close-building-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="building-form" class="p-5 space-y-4">
+                <input type="hidden" id="building-id">
+                <div>
+                    <label for="building-code" class="block mb-2 text-sm font-medium">Mã tòa nhà</label>
+                    <input type="text" id="building-code" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Ví dụ: A1, B2, C3..." required>
+                </div>
+                <div>
+                    <label for="building-address" class="block mb-2 text-sm font-medium">Địa chỉ tòa nhà</label>
+                    <input type="text" id="building-address" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Nhập địa chỉ tòa nhà" required>
+                </div>
+                <div>
+                    <label for="building-rooms" class="block mb-2 text-sm font-medium">Danh sách phòng</label>
+                    <input type="text" id="building-rooms" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="101, 102, 103, 201, 202..." required>
+                    <small class="text-gray-500">Nhập mã số phòng, ngăn cách bằng dấu phẩy</small>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" id="cancel-building-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Service Modal -->
+    <div id="service-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg modal-content transform scale-95">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold" id="service-modal-title">Thêm Phí dịch vụ</h3>
+                <button id="close-service-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="service-form" class="p-5 space-y-4">
+                <input type="hidden" id="service-id">
+                <div>
+                    <label for="service-name" class="block mb-2 text-sm font-medium">Tên dịch vụ</label>
+                    <input type="text" id="service-name" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Ví dụ: Tiền điện" required>
+                </div>
+                <div>
+                    <label for="service-price" class="block mb-2 text-sm font-medium">Đơn giá</label>
+                    <input type="text" id="service-price" class="w-full p-2.5 border rounded-lg bg-gray-50 money-input" placeholder="Ví dụ: 4.000" required>
+                </div>
+                <div>
+                    <label for="service-unit" class="block mb-2 text-sm font-medium">Đơn vị</label>
+                    <input type="text" id="service-unit" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Ví dụ: Kwh, Người, Tháng..." required>
+                </div>
+                <div>
+                    <label for="service-buildings" class="block mb-2 text-sm font-medium">Áp dụng cho tòa nhà</label>
+                    <div id="building-checkboxes" class="space-y-2 max-h-40 overflow-y-auto border rounded-lg p-3 bg-gray-50">
+                        <!-- Building checkboxes will be populated here -->
+                    </div>
+                    <small class="text-gray-500">Chọn các tòa nhà muốn áp dụng phí dịch vụ này</small>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" id="cancel-service-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Contract Modal -->
+    <div id="contract-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl modal-content transform scale-95 max-h-[90vh] overflow-y-auto">
+            <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white">
+                <h3 class="text-lg font-semibold" id="contract-modal-title">Thêm Hợp đồng thuê</h3>
+                <button id="close-contract-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="contract-form" class="p-5 space-y-6">
+                <input type="hidden" id="contract-id">
+                
+                <!-- Section 1: General Info -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">1. Thông tin chung</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="contract-building" class="block mb-2 text-sm font-medium">Chọn tòa nhà</label>
+                            <select id="contract-building" class="w-full p-2.5 border rounded-lg bg-gray-50" required>
+                                <option value="">-- Chọn tòa nhà --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="contract-room" class="block mb-2 text-sm font-medium">Phòng</label>
+                            <select id="contract-room" class="w-full p-2.5 border rounded-lg bg-gray-50" required>
+                                <option value="">-- Chọn phòng --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="contract-start-date" class="block mb-2 text-sm font-medium">Ngày bắt đầu</label>
+                            <input type="date" id="contract-start-date" class="w-full p-2.5 border rounded-lg bg-gray-50" required>
+                        </div>
+                        <div>
+                            <label for="contract-end-date" class="block mb-2 text-sm font-medium">Ngày kết thúc</label>
+                            <input type="date" id="contract-end-date" class="w-full p-2.5 border rounded-lg bg-gray-50" required>
+                        </div>
+                        <div>
+                            <label for="contract-payment-day" class="block mb-2 text-sm font-medium">Hạn thanh toán (ngày trong tháng)</label>
+                            <input type="number" id="contract-payment-day" class="w-full p-2.5 border rounded-lg bg-gray-50" min="1" max="31" placeholder="Ví dụ: 3" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Customers -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">2. Khách hàng</h4>
+                    <div class="relative">
+                        <button type="button" id="customer-selector-btn" class="w-full p-3 border rounded-lg bg-gray-50 text-left flex justify-between items-center">
+                            <span id="selected-customers-text">Chọn khách hàng...</span>
+                            <span>▼</span>
+                        </button>
+                        
+                        <div id="customer-dropdown" class="absolute top-full left-0 right-0 bg-white border rounded-lg shadow-lg z-10 hidden">
+                            <div class="p-3 border-b">
+                                <input type="text" id="customer-search" class="w-full p-2 border rounded" placeholder="Tìm theo tên hoặc số điện thoại...">
+                            </div>
+                            <div class="p-2 border-b">
+                                <button type="button" id="add-customer-from-contract" class="w-full p-2 bg-green-600 text-white rounded text-sm hover:bg-green-700">
+                                    + Thêm khách hàng mới
+                                </button>
+                            </div>
+                            <div id="customer-options" class="max-h-60 overflow-y-auto">
+                                <!-- Customer options will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div id="selected-customers-display" class="mt-3 space-y-2">
+                        <!-- Selected customers will be displayed here -->
+                    </div>
+                </div>
+
+                <!-- Section 3: Rent Price & Deposit -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">3. Giá thuê & tiền cọc</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="contract-rent-price" class="block mb-2 text-sm font-medium">Giá thuê (VNĐ/tháng)</label>
+                            <input type="text" id="contract-rent-price" class="w-full p-2.5 border rounded-lg bg-gray-50 money-input" placeholder="Ví dụ: 3.500.000" required>
+                        </div>
+                        <div>
+                            <label for="contract-deposit" class="block mb-2 text-sm font-medium">Tiền cọc (VNĐ)</label>
+                            <input type="text" id="contract-deposit" class="w-full p-2.5 border rounded-lg bg-gray-50 money-input" placeholder="Ví dụ: 7.000.000" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Services -->
+                <div class="border rounded-lg p-4">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">4. Phí dịch vụ</h4>
+                    <div id="contract-services-list" class="space-y-3">
+                        <!-- Services will be populated here -->
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" id="cancel-contract-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Lưu Hợp đồng</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Quick Add Customer Modal (from contract) -->
+    <div id="quick-customer-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md modal-content transform scale-95">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold">Thêm khách hàng mới</h3>
+                <button id="close-quick-customer-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="quick-customer-form" class="p-4 space-y-4">
+                <div>
+                    <label for="quick-customer-name" class="block mb-2 text-sm font-medium">Họ tên</label>
+                    <input type="text" id="quick-customer-name" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Nhập họ tên khách hàng" required>
+                </div>
+                <div>
+                    <label for="quick-customer-phone" class="block mb-2 text-sm font-medium">Số điện thoại</label>
+                    <input type="tel" id="quick-customer-phone" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Nhập số điện thoại" required>
+                </div>
+                <div class="pt-2 flex justify-end gap-3">
+                    <button type="button" id="cancel-quick-customer-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700">Thêm & Chọn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Customer Modal -->
+    <div id="customer-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg modal-content transform scale-95">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold" id="customer-modal-title">Thêm Khách hàng</h3>
+                <button id="close-customer-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="customer-form" class="p-5 space-y-4">
+                <input type="hidden" id="customer-id">
+                <div>
+                    <label for="customer-name" class="block mb-2 text-sm font-medium">Họ tên</label>
+                    <input type="text" id="customer-name" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Nhập họ tên khách hàng" required>
+                </div>
+                <div>
+                    <label for="customer-phone" class="block mb-2 text-sm font-medium">Số điện thoại</label>
+                    <input type="tel" id="customer-phone" class="w-full p-2.5 border rounded-lg bg-gray-50" placeholder="Nhập số điện thoại" required>
+                </div>
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" id="cancel-customer-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Bill Modal -->
+    <div id="bill-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl modal-content transform scale-95 max-h-screen overflow-y-auto">
+            <div class="p-5 border-b flex justify-between items-center">
+                <h3 class="text-lg font-semibold" id="bill-modal-title">Tạo Hóa đơn Tiền Nhà</h3>
+                <button id="close-bill-modal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <form id="bill-form" class="p-5 space-y-6">
+                <input type="hidden" id="bill-id">
+                
+                <!-- Section 1: General Info -->
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">1. Thông tin chung</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div>
+                            <label for="bill-building" class="block mb-2 text-sm font-medium">Tòa nhà</label>
+                            <select id="bill-building" class="w-full p-2.5 border rounded-lg bg-white" required>
+                                <option value="">-- Chọn tòa nhà --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bill-room" class="block mb-2 text-sm font-medium">Phòng</label>
+                            <select id="bill-room" class="w-full p-2.5 border rounded-lg bg-white" required>
+                                <option value="">-- Chọn phòng --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bill-customer" class="block mb-2 text-sm font-medium">Khách hàng</label>
+                            <input type="text" id="bill-customer" class="w-full p-2.5 border rounded-lg bg-gray-100" readonly>
+                            <input type="hidden" id="bill-customer-id">
+                        </div>
+                        <div>
+                            <label for="bill-period" class="block mb-2 text-sm font-medium">Kỳ thanh toán</label>
+                            <select id="bill-period" class="w-full p-2.5 border rounded-lg bg-white" required>
+                                <option value="">-- Chọn tháng --</option>
+                                <option value="1">Tháng 1</option>
+                                <option value="2">Tháng 2</option>
+                                <option value="3">Tháng 3</option>
+                                <option value="4">Tháng 4</option>
+                                <option value="5">Tháng 5</option>
+                                <option value="6">Tháng 6</option>
+                                <option value="7">Tháng 7</option>
+                                <option value="8">Tháng 8</option>
+                                <option value="9">Tháng 9</option>
+                                <option value="10">Tháng 10</option>
+                                <option value="11">Tháng 11</option>
+                                <option value="12">Tháng 12</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bill-date" class="block mb-2 text-sm font-medium">Ngày lập Hóa đơn</label>
+                            <input type="date" id="bill-date" class="w-full p-2.5 border rounded-lg bg-white" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Services & Fees -->
+                <div class="border rounded-lg p-4 bg-gray-50">
+                    <h4 class="text-md font-semibold mb-4 text-blue-600">2. Dịch vụ & phí</h4>
+                    
+                    <!-- Services Table -->
+                    <div class="overflow-x-auto mb-4">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b text-left text-gray-600">
+                                    <th class="py-2 px-3">Dịch vụ</th>
+                                    <th class="py-2 px-3">Đơn giá</th>
+                                    <th class="py-2 px-3">Từ ngày</th>
+                                    <th class="py-2 px-3">Đến ngày</th>
+                                    <th class="py-2 px-3">Số lượng</th>
+                                    <th class="py-2 px-3">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bill-services-list">
+                                <!-- Services will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Total Amount -->
+                    <div class="flex justify-end">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600">Tổng thành tiền:</div>
+                            <div class="text-xl font-bold text-blue-600" id="bill-total-amount">0 VNĐ</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 flex justify-end gap-3">
+                    <button type="button" id="cancel-bill-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">Hủy</button>
+                    <button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700">Lưu Hóa đơn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bill Detail Modal - RE-DESIGNED -->
+    <div id="bill-detail-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl modal-content transform scale-95 max-h-[95vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center no-print">
+                <h3 class="text-lg font-semibold">Chi tiết Hóa đơn</h3>
+                <div class="flex items-center gap-2">
+                     <button id="print-bill-btn" class="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 text-sm">🖨️ In hóa đơn</button>
+                    <button id="close-bill-detail-modal" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+                </div>
+            </div>
+            <div class="p-8 overflow-y-auto" id="bill-detail-printable">
+                <!-- Bill Container with Border -->
+                <div class="border-2 border-gray-800 p-6">
+                    <!-- Bill Header -->
+                    <div class="text-center mb-8">
+                        <h2 id="bill-detail-title" class="text-3xl font-bold">Hóa Đơn Tiền Nhà</h2>
+                    </div>
+
+                <!-- Customer and Bill Info -->
+                <div class="mb-8 p-4 bg-gray-50 rounded-lg">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p><span class="text-gray-600">Phòng:</span> <span id="bill-detail-room" class="font-bold ml-2"></span></p>
+                            <p><span class="text-gray-600">Khách hàng:</span> <span id="bill-detail-customer-name" class="font-bold ml-2"></span></p>
+                            <p><span class="text-gray-600">Địa chỉ:</span> <span id="bill-detail-address" class="font-bold ml-2"></span></p>
+                        </div>
+                        <div class="text-right">
+                            <p><span class="text-gray-600">Số hóa đơn:</span> <span id="bill-detail-number" class="font-bold ml-2"></span></p>
+                            <p><span class="text-gray-600">Ngày:</span> <span id="bill-detail-date" class="font-bold ml-2"></span></p>
+                            <p><span class="text-gray-600">Hạn cuối:</span> <span id="bill-detail-due-date" class="font-bold ml-2"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Bill Items -->
+                    <div class="mb-8">
+                        <table class="w-full border-2 border-gray-800">
+                            <thead class="bg-green-600 text-white">
+                                <tr>
+                                    <th class="py-2 px-3 text-left font-semibold border border-gray-800">STT</th>
+                                    <th class="py-2 px-3 text-left font-semibold border border-gray-800">Nội dung</th>
+                                    <th class="py-2 px-3 text-center font-semibold border border-gray-800">Đơn giá (VNĐ)</th>
+                                    <th class="py-2 px-3 text-center font-semibold border border-gray-800">Số lượng</th>
+                                    <th class="py-2 px-3 text-right font-semibold border border-gray-800">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bill-detail-services-table">
+                                <!-- Items will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>                    <!-- Bill Summary -->
+                    <div>
+                        <div class="flex justify-between items-end">
+                            <div class="w-32 h-32">
+                               <img id="bill-detail-qr" src="" alt="" class="w-full h-full object-contain"/>
+                            </div>
+                            <div class="text-right space-y-2">
+                             <div class="flex justify-between">
+                                <span>Tạm tính:</span>
+                                <span id="bill-detail-subtotal" class="font-medium"></span>
+                            </div>
+                             <div class="flex justify-between">
+                                <span>Đã thanh toán:</span>
+                                <span id="bill-detail-paid" class="font-medium">0 VNĐ</span>
+                            </div>
+                            <div class="border-t my-2"></div>
+                             <div class="flex justify-between items-center text-base">
+                                    <span class="font-bold text-red-600">Còn lại:</span>
+                                    <span id="bill-detail-due-amount" class="font-bold text-red-600 ml-4"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Bill Container -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-green-500 text-white py-3 px-5 rounded-lg shadow-xl hidden transform translate-y-16 transition-transform duration-300">
+        <p id="toast-message"></p>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center hidden">
+        <div class="text-white text-xl">Đang kết nối tới Firebase...</div>
+    </div>
+
+    <!-- Firebase App Logic -->
+    <script type="module">
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, deleteDoc, serverTimestamp, query, where, orderBy } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        // --- FIREBASE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2m1K7pijNC1yirw_t36Rc3HnzCsD8pCs",
+            authDomain: "nha-tro-53ca7.firebaseapp.com",
+            projectId: "nha-tro-53ca7",
+            storageBucket: "nha-tro-53ca7.firebasestorage.app",
+            messagingSenderId: "415886594203",
+            appId: "1:415886594203:web:f3cda09037973176c9763e",
+            measurementId: "G-Y5GSRYP4XC"
+        };
+
+        // --- INITIALIZE FIREBASE ---
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // --- YOUR BANK INFO FOR VIETQR ---
+        const YOUR_BANK_ID = "970416"; // ACB Bank's BIN code. Change to your bank's code.
+        const YOUR_ACCOUNT_NO = "113366668888"; // Change to your account number.
+        const YOUR_ACCOUNT_NAME = "DANG NHAT ANH"; // Change to your account name.
+
+        // --- FIREBASE CACHE VARIABLES ---
+        let buildingsCache = [];
+        let servicesCache = [];
+        let customersCache = [];
+        let contractsCache = [];
+        let billsCache = [];
+        let tenantsCache = [];
+
+        // --- FIREBASE HELPERS ---
+        function getBuildings() {
+            return buildingsCache;
+        }
+        
+        function getServices() {
+            return servicesCache;
+        }
+        
+        function getCustomers() {
+            return customersCache;
+        }
+        
+        function getContracts() {
+            return contractsCache;
+        }
+
+        function getBills() {
+            return billsCache;
+        }
+
+        // Utility functions
+        function generateId() {
+            return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        }
+
+        // Cache variables - đã khai báo ở trên
+
+        // --- FIREBASE INITIALIZATION ---
+        const loadingOverlay = document.getElementById('loading-overlay');
+        let isFirebaseReady = false;
+
+        async function initializeFirebase() {
+            try {
+                loadingOverlay.classList.remove('hidden');
+                
+                // Sign in anonymously
+                await signInAnonymously(auth);
+                console.log("Signed in to Firebase successfully");
+                
+                // Set up real-time listeners
+                setupFirebaseListeners();
+                
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+                showToast('Lỗi kết nối Firebase: ' + error.message, 'error');
+                loadingOverlay.querySelector('div').textContent = 'Lỗi kết nối Firebase. Vui lòng refresh trang.';
+            }
+        }
+
+        function setupFirebaseListeners() {
+            const collections = ['buildings', 'services', 'customers', 'contracts', 'bills'];
+            let loadedCount = 0;
+
+            collections.forEach(collectionName => {
+                const q = query(collection(db, collectionName), orderBy('createdAt', 'desc'));
+                
+                onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Update cache
+                    switch(collectionName) {
+                        case 'buildings': buildingsCache = data; break;
+                        case 'services': servicesCache = data; break;
+                        case 'customers': customersCache = data; break;
+                        case 'contracts': contractsCache = data; break;
+                        case 'bills': billsCache = data; break;
+                    }
+                    
+                    // Reload UI if page is ready
+                    if (isFirebaseReady) {
+                        switch(collectionName) {
+                            case 'buildings': if (buildingsSection && !buildingsSection.classList.contains('hidden')) loadBuildings(); break;
+                            case 'services': if (servicesSection && !servicesSection.classList.contains('hidden')) loadServices(); break;
+                            case 'customers': if (customersSection && !customersSection.classList.contains('hidden')) loadCustomers(); break;
+                            case 'contracts': if (contractsSection && !contractsSection.classList.contains('hidden')) loadContracts(); break;
+                            case 'bills': if (billsSection && !billsSection.classList.contains('hidden')) loadBills(); break;
+                        }
+                    }
+                    
+                    // Hide loading when all collections loaded
+                    if (++loadedCount >= collections.length && !isFirebaseReady) {
+                        isFirebaseReady = true;
+                        loadingOverlay.classList.add('hidden');
+                        console.log("All Firebase data loaded successfully");
+                    }
+                }, (error) => {
+                    console.error(`Error listening to ${collectionName}:`, error);
+                    showToast(`Lỗi tải dữ liệu ${collectionName}: ${error.message}`, 'error');
+                });
+            });
+        }
+        
+        // Global function for removing customer
+        window.removeCustomer = function(customerId) {
+            selectedCustomers = selectedCustomers.filter(id => id !== customerId);
+            updateSelectedCustomersDisplay();
+            loadCustomerOptions(document.getElementById('customer-search').value);
+        }
+
+        // Format number with dots
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Remove dots from formatted number
+        function parseFormattedNumber(str) {
+            return parseInt(str.replace(/\./g, '')) || 0;
+        }
+
+        // Format date from YYYY-MM-DD to DD-MM-YYYY
+        function formatDateDisplay(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        // Format money input
+        function formatMoneyInput(input) {
+            let value = input.value.replace(/\./g, '');
+            if (value && !isNaN(value)) {
+                input.value = formatNumber(value);
+            }
+        }
+
+        // --- DOM ELEMENTS ---
+        const mainHeaderTitle = document.getElementById('main-header-title');
+        const buildingModal = document.getElementById('building-modal');
+        const closeBuildingModalBtn = document.getElementById('close-building-modal');
+        const cancelBuildingBtn = document.getElementById('cancel-building-btn');
+        const addBuildingBtn = document.getElementById('add-building-btn');
+        const buildingForm = document.getElementById('building-form');
+        const buildingModalTitle = document.getElementById('building-modal-title');
+        const buildingsBtn = document.getElementById('buildings-btn');
+        const buildingsSection = document.getElementById('buildings-section');
+        const servicesSection = document.getElementById('services-section');
+        const contractsSection = document.getElementById('contracts-section');
+        const customersSection = document.getElementById('customers-section');
+        const mainSection = document.getElementById('main-section');
+        const billsSection = document.getElementById('bills-section');
+
+        const serviceModal = document.getElementById('service-modal');
+        const closeServiceModalBtn = document.getElementById('close-service-modal');
+        const cancelServiceBtn = document.getElementById('cancel-service-btn');
+        const addServiceBtn = document.getElementById('add-service-btn');
+        const serviceForm = document.getElementById('service-form');
+        const serviceModalTitle = document.getElementById('service-modal-title');
+        const servicesBtn = document.getElementById('services-btn');
+
+        const customerModal = document.getElementById('customer-modal');
+        const closeCustomerModalBtn = document.getElementById('close-customer-modal');
+        const cancelCustomerBtn = document.getElementById('cancel-customer-btn');
+        const addCustomerBtn = document.getElementById('add-customer-btn');
+        const customerForm = document.getElementById('customer-form');
+        const customerModalTitle = document.getElementById('customer-modal-title');
+        const customersBtn = document.getElementById('customers-btn');
+
+        const contractModal = document.getElementById('contract-modal');
+        const closeContractModalBtn = document.getElementById('close-contract-modal');
+        const cancelContractBtn = document.getElementById('cancel-contract-btn');
+        const addContractBtn = document.getElementById('add-contract-btn');
+        const contractForm = document.getElementById('contract-form');
+        const contractModalTitle = document.getElementById('contract-modal-title');
+        const contractsBtn = document.getElementById('contracts-btn');
+        
+        // Contract filter elements
+        const filterBuilding = document.getElementById('filter-building');
+        const filterRoom = document.getElementById('filter-room');
+        const filterStatus = document.getElementById('filter-status');
+        
+        // Bill filter elements
+        const filterBillBuilding = document.getElementById('filter-bill-building');
+        const filterBillRoom = document.getElementById('filter-bill-room');
+        const filterBillMonth = document.getElementById('filter-bill-month');
+        const filterBillStatus = document.getElementById('filter-bill-status');
+
+        const quickCustomerModal = document.getElementById('quick-customer-modal');
+        const closeQuickCustomerModalBtn = document.getElementById('close-quick-customer-modal');
+        const cancelQuickCustomerBtn = document.getElementById('cancel-quick-customer-btn');
+        const addCustomerFromContractBtn = document.getElementById('add-customer-from-contract');
+        const quickCustomerForm = document.getElementById('quick-customer-form');
+
+        const billModal = document.getElementById('bill-modal');
+        const closeBillModalBtn = document.getElementById('close-bill-modal');
+        const cancelBillBtn = document.getElementById('cancel-bill-btn');
+        const addBillBtn = document.getElementById('add-bill-btn');
+        const billForm = document.getElementById('bill-form');
+        const billModalTitle = document.getElementById('bill-modal-title');
+        const billsBtn = document.getElementById('bills-btn');
+
+        const billDetailModal = document.getElementById('bill-detail-modal');
+        const closeBillDetailModalBtn = document.getElementById('close-bill-detail-modal');
+        const printBillBtn = document.getElementById('print-bill-btn');
+        
+        // --- MODAL CONTROLS ---
+        const openModal = (modalEl) => {
+            modalEl.classList.remove('hidden');
+            setTimeout(() => {
+                modalEl.classList.remove('opacity-0');
+                modalEl.querySelector('.modal-content').classList.remove('scale-95');
+            }, 10);
+        };
+        const closeModal = (modalEl) => {
+            modalEl.classList.add('opacity-0');
+            modalEl.querySelector('.modal-content').classList.add('scale-95');
+            setTimeout(() => modalEl.classList.add('hidden'), 300);
+        };
+
+        addBillBtn.addEventListener('click', () => {
+            billModalTitle.textContent = "Tạo Hóa đơn Tiền Nhà";
+            billForm.reset();
+            document.getElementById('bill-id').value = '';
+            document.getElementById('bill-date').value = new Date().toISOString().split('T')[0];
+            loadBillBuildings();
+            clearBillServices();
+            openModal(billModal);
+        });
+        
+        closeBillModalBtn.addEventListener('click', () => closeModal(billModal));
+        cancelBillBtn.addEventListener('click', () => closeModal(billModal));
+
+        // Bill detail modal event handlers
+        closeBillDetailModalBtn.addEventListener('click', () => closeModal(billDetailModal));
+        printBillBtn.addEventListener('click', () => window.print());
+
+        // Bill form event handlers
+        document.getElementById('bill-building').addEventListener('change', function() {
+            const buildingId = this.value;
+            loadBillRooms(buildingId);
+            document.getElementById('bill-customer').value = '';
+            document.getElementById('bill-customer-id').value = '';
+            clearBillServices();
+        });
+
+        document.getElementById('bill-room').addEventListener('change', function() {
+            const buildingId = document.getElementById('bill-building').value;
+            const room = this.value;
+            if (buildingId && room) {
+                loadBillCustomer(buildingId, room);
+            }
+        });
+        
+        document.getElementById('bill-period').addEventListener('change', function() {
+            const buildingId = document.getElementById('bill-building').value;
+            const room = document.getElementById('bill-room').value;
+            if (buildingId && room) {
+                loadBillCustomer(buildingId, room);
+            }
+        });
+
+
+        // Service input change handlers
+        document.addEventListener('input', function(e) {
+            // Handle electric reading changes
+            if (e.target.classList.contains('electric-new-reading')) {
+                const serviceRow = e.target.closest('tr');
+                const oldReading = parseInt(serviceRow.querySelector('.electric-old-reading').value) || 0;
+                const newReading = parseInt(e.target.value) || 0;
+                const price = parseFloat(e.target.dataset.price);
+                const usage = Math.max(0, newReading - oldReading);
+                const total = usage * price;
+                serviceRow.querySelector('.service-total').textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';
+                calculateBillTotal();
+            }
+            
+            // Handle service quantity changes
+            if (e.target.classList.contains('service-quantity')) {
+                const serviceRow = e.target.closest('tr');
+                const quantity = parseInt(e.target.value) || 0;
+                const price = parseFloat(e.target.dataset.price);
+                
+                // Get date inputs
+                const fromDateInput = serviceRow.querySelector('input[type="date"]:first-of-type');
+                const toDateInput = serviceRow.querySelector('input[type="date"]:last-of-type');
+                
+                if (fromDateInput && toDateInput && fromDateInput.value && toDateInput.value) {
+                    const fromDate = new Date(fromDateInput.value);
+                    const toDate = new Date(toDateInput.value);
+                    const days = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                    
+                    const year = fromDate.getFullYear();
+                    const month = fromDate.getMonth();
+                    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+                    
+                    const total = (price * quantity / totalDaysInMonth) * days;
+                    serviceRow.querySelector('.service-total').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(total)) + ' VNĐ';
+                } else {
+                    const total = price * quantity;
+                    serviceRow.querySelector('.service-total').textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';
+                }
+                calculateBillTotal();
+            }
+            
+            // Handle date changes
+            if (e.target.type === 'date') {
+                const serviceRow = e.target.closest('tr');
+                if (!serviceRow) return;
+
+                const serviceName = serviceRow.querySelector('td:first-child').textContent.trim();
+                const dateInputs = serviceRow.querySelectorAll('input[type="date"]');
+                
+                if (dateInputs.length >= 2 && dateInputs[0].value && dateInputs[1].value) {
+                    const fromDate = new Date(dateInputs[0].value);
+                    const toDate = new Date(dateInputs[1].value);
+
+                    if (isNaN(fromDate) || isNaN(toDate) || fromDate > toDate) {
+                        calculateBillTotal();
+                        return; // Invalid date range, do nothing
+                    }
+
+                    const days = Math.max(1, Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+                    
+                    const year = fromDate.getFullYear();
+                    const month = fromDate.getMonth();
+                    const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+                    
+                    if (serviceName === 'Tiền nhà') {
+                        const daysSpan = serviceRow.querySelector('td:nth-child(5)');
+                        if (daysSpan) daysSpan.textContent = `${days} ngày`;
+                        
+                        const buildingId = document.getElementById('bill-building').value;
+                        const room = document.getElementById('bill-room').value;
+                        const contract = getContracts().find(c => c.buildingId === buildingId && c.room === room && getContractStatus(c) === 'active');
+                        
+                        if (contract) {
+                            const total = (contract.rentPrice / totalDaysInMonth) * days;
+                            serviceRow.querySelector('.service-total').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(total)) + ' VNĐ';
+                        }
+                    } else {
+                        const quantityInput = serviceRow.querySelector('.service-quantity');
+                        if (quantityInput) {
+                            const quantity = parseInt(quantityInput.value) || 0;
+                            const price = parseFloat(quantityInput.dataset.price);
+                            const total = (price * quantity / totalDaysInMonth) * days;
+                            serviceRow.querySelector('.service-total').textContent = new Intl.NumberFormat('vi-VN').format(Math.round(total)) + ' VNĐ';
+                        }
+                    }
+                    
+                    calculateBillTotal();
+                }
+            }
+        });
+
+        function loadTenants() {
+            tenantsCache = getCustomers();
+        }
+
+        // --- BILL FORM SUBMIT - KHÔI PHỤC LOGIC TỪ index1.html ---
+        billForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const billId = document.getElementById('bill-id').value;
+            const buildingId = document.getElementById('bill-building').value;
+            const room = document.getElementById('bill-room').value;
+            const customerId = document.getElementById('bill-customer-id').value;
+            const period = document.getElementById('bill-period').value;
+            const billDate = document.getElementById('bill-date').value;
+            
+            if (!buildingId || !room || !customerId || !period || !billDate) {
+                showToast('Vui lòng điền đầy đủ thông tin!', 'error');
+                return;
+            }
+            
+            const totalText = document.getElementById('bill-total-amount').textContent;
+            const totalAmount = parseInt(totalText.replace(/[^\d]/g, '')) || 0;
+            
+            if (totalAmount <= 0) {
+                showToast('Tổng tiền phải lớn hơn 0!', 'error');
+                return;
+            }
+            
+            const services = [];
+            document.querySelectorAll('#bill-services-list tr').forEach(row => {
+                const serviceName = row.querySelector('td:first-child').textContent.trim();
+                const totalText = row.querySelector('.service-total').textContent;
+                const amount = parseInt(totalText.replace(/[^\d]/g, '')) || 0;
+                const dateInputs = row.querySelectorAll('input[type="date"]');
+                const fromDate = dateInputs.length > 0 ? dateInputs[0].value : null;
+                const toDate = dateInputs.length > 1 ? dateInputs[1].value : null;
+                const electricNewInput = row.querySelector('.electric-new-reading');
+                const serviceQuantityInput = row.querySelector('.service-quantity');
+
+                let serviceDetail = { serviceName, amount, fromDate, toDate };
+
+                if (serviceName === 'Tiền nhà') {
+                    const contract = contractsCache.find(c => c.buildingId === buildingId && c.room === room && getContractStatus(c) === 'active');
+                    serviceDetail.type = 'rent';
+                    serviceDetail.unitPrice = contract ? contract.rentPrice : 0;
+                    serviceDetail.unit = 'tháng';
+                    const daysSpan = row.querySelector('td:nth-child(5)');
+                    serviceDetail.quantityDisplay = daysSpan ? daysSpan.textContent.trim() : '1';
+                } else if (electricNewInput) {
+                    serviceDetail.type = 'electric';
+                    serviceDetail.serviceId = electricNewInput.dataset.serviceId;
+                    serviceDetail.unitPrice = parseFloat(electricNewInput.dataset.price);
+                    serviceDetail.oldReading = parseInt(row.querySelector('.electric-old-reading').value) || 0;
+                    serviceDetail.newReading = parseInt(electricNewInput.value) || 0;
+                    serviceDetail.quantity = Math.max(0, serviceDetail.newReading - serviceDetail.oldReading);
+                } else if (serviceQuantityInput) {
+                    serviceDetail.type = 'service';
+                    serviceDetail.serviceId = serviceQuantityInput.dataset.serviceId;
+                    serviceDetail.unitPrice = parseFloat(serviceQuantityInput.dataset.price);
+                    serviceDetail.quantity = parseInt(serviceQuantityInput.value) || 0;
+                }
+                
+                if(serviceDetail.serviceId) {
+                    const serviceDef = servicesCache.find(s => s.id === serviceDetail.serviceId);
+                    if(serviceDef) serviceDetail.unit = serviceDef.unit;
+                }
+                services.push(serviceDetail);
+            });
+            
+            // ===== KHÔI PHỤC LOGIC CHÍNH TỪ index1.html =====
+            const bills = getBills();
+            
+            if (billId) {
+                const billIndex = bills.findIndex(b => b.id === billId);
+                if (billIndex !== -1) {
+                    const updatedBill = {
+                        ...bills[billIndex],
+                        buildingId, room, customerId, period, billDate,
+                        services,
+                        totalAmount,
+                        updatedAt: new Date().toISOString()
+                    };
+                    delete updatedBill.rentInfo; // remove legacy property
+                    bills[billIndex] = updatedBill;
+                    showToast('Cập nhật Hóa đơn thành công!');
+                    
+                    // Update Firebase
+                    try {
+                        await setDoc(doc(db, 'bills', billId), {
+                            ...updatedBill,
+                            updatedAt: serverTimestamp()
+                        });
+                    } catch (error) {
+                        console.error('Error updating Firebase:', error);
+                    }
+                }
+            } else {
+                const newBill = {
+                    id: generateId(), 
+                    buildingId, 
+                    room, 
+                    customerId, 
+                    period, 
+                    billDate,
+                    services, 
+                    totalAmount,
+                    status: 'unpaid',
+                    createdAt: new Date().toISOString()
+                };
+                bills.push(newBill);
+                showToast('Tạo Hóa đơn thành công!');
+                
+                // Save to Firebase
+                try {
+                    await setDoc(doc(db, 'bills', newBill.id), {
+                        ...newBill,
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                } catch (error) {
+                    console.error('Error saving to Firebase:', error);
+                }
+            }
+            
+            // Update local cache and refresh UI
+            billsCache = bills;
+            loadBills();
+            closeModal(billModal);
+        });
+
+        // --- UTILITY ---
+        function showToast(message, type = 'success') {
+            const toastEl = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.textContent = message;
+            toastEl.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'translate-y-16');
+            toastEl.classList.add(type === 'success' ? 'bg-green-500' : 'bg-red-500');
+
+            setTimeout(() => {
+                toastEl.classList.add('translate-y-16');
+                setTimeout(() => toastEl.classList.add('hidden'), 300);
+            }, 3000);
+        }
+        
+        // --- SECTION SWITCHING ---
+        function showSection(sectionName) {
+            const sections = {
+                'buildings': { element: buildingsSection, title: 'Quản lý Tòa nhà', loader: loadBuildings },
+                'services': { element: servicesSection, title: 'Quản lý Phí dịch vụ', loader: loadServices },
+                'contracts': { element: contractsSection, title: 'Quản lý Hợp đồng', loader: loadContracts },
+                'customers': { element: customersSection, title: 'Quản lý Khách hàng', loader: loadCustomers },
+                'bills': { element: billsSection, title: 'Danh sách Hóa đơn', loader: loadBills },
+                'main': { element: mainSection, title: 'Bảng tin', loader: () => {} }
+            };
+
+            Object.values(sections).forEach(sec => sec.element.classList.add('hidden'));
+
+            const selected = sections[sectionName] || sections['bills'];
+            selected.element.classList.remove('hidden');
+            mainHeaderTitle.textContent = selected.title;
+            selected.loader();
+        }
+
+        // --- BUILDINGS MANAGEMENT ---
+        function loadBuildings() {
+            const buildings = getBuildings();
+            const listEl = document.getElementById('buildings-list');
+            listEl.innerHTML = '';
+            
+            if (buildings.length === 0) {
+                listEl.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">Chưa có tòa nhà nào.</td></tr>';
+                return;
+            }
+            
+            buildings.forEach(building => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-bold text-blue-600">${building.code || 'N/A'}</td>
+                    <td class="py-4 px-4 font-medium">${building.address}</td>
+                    <td class="py-4 px-4">${building.rooms.length} phòng</td>
+                    <td class="py-4 px-4">
+                        <div class="flex flex-wrap gap-1">
+                            ${building.rooms.map(room => `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${room}</span>`).join('')}
+                        </div>
+                    </td>
+                    <td class="py-4 px-4 flex gap-3">
+                        <button data-id="${building.id}" class="edit-building-btn text-sm font-medium text-blue-600">Sửa</button>
+                        <button data-id="${building.id}" class="delete-building-btn text-sm font-medium text-red-600">Xóa</button>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+        }
+
+        // --- SERVICES MANAGEMENT ---
+        function loadServices() {
+            const services = getServices();
+            const listEl = document.getElementById('services-list');
+            listEl.innerHTML = '';
+            
+            if (services.length === 0) {
+                listEl.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-500">Chưa có phí dịch vụ nào.</td></tr>';
+                return;
+            }
+            
+            const buildings = getBuildings();
+            
+            services.forEach(service => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-medium">${service.name}</td>
+                    <td class="py-4 px-4">${new Intl.NumberFormat('vi-VN').format(service.price)}</td>
+                    <td class="py-4 px-4">${service.unit}</td>
+                    <td class="py-4 px-4 flex gap-3">
+                        <button data-id="${service.id}" class="edit-service-btn text-sm font-medium text-blue-600">Sửa</button>
+                        <button data-id="${service.id}" class="delete-service-btn text-sm font-medium text-red-600">Xóa</button>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+        }
+
+        // --- CUSTOMERS MANAGEMENT ---
+        function loadCustomers() {
+            const customers = getCustomers();
+            const listEl = document.getElementById('customers-list');
+            listEl.innerHTML = '';
+            
+            if (customers.length === 0) {
+                listEl.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-500">Chưa có khách hàng nào.</td></tr>';
+                return;
+            }
+            
+            customers.forEach(customer => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-medium">${customer.name}</td>
+                    <td class="py-4 px-4">${customer.phone}</td>
+                    <td class="py-4 px-4 flex gap-3">
+                        <button data-id="${customer.id}" class="edit-customer-btn text-sm font-medium text-blue-600">Sửa</button>
+                        <button data-id="${customer.id}" class="delete-customer-btn text-sm font-medium text-red-600">Xóa</button>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+        }
+
+        // --- CONTRACTS MANAGEMENT ---
+        function loadContracts() {
+            contractsCache = getContracts();
+            contractsCache.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            renderContracts(contractsCache);
+            updateContractStats();
+            loadFilterOptions();
+        }
+        
+        function getContractStatus(contract) {
+            if (contract.status === 'terminated') return 'terminated';
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(contract.endDate);
+            endDate.setHours(0, 0, 0, 0);
+            const diffTime = endDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays < 0) return 'expired'; // Quá hạn
+            if (diffDays <= 30) return 'expiring'; // Sắp hết hạn (30 ngày)
+            return 'active'; // Đang thuê
+        }
+        
+        function getStatusInfo(status) {
+            switch (status) {
+                case 'active':
+                    return { text: 'Đang thuê', className: 'bg-green-100 text-green-800' };
+                case 'expiring':
+                    return { text: 'Sắp hết hạn', className: 'bg-yellow-100 text-yellow-800' };
+                case 'expired':
+                    return { text: 'Quá hạn', className: 'bg-red-100 text-red-800' };
+                case 'terminated':
+                    return { text: 'Đã thanh lý', className: 'bg-gray-100 text-gray-800' };
+                default:
+                    return { text: 'Không xác định', className: 'bg-gray-100 text-gray-800' };
+            }
+        }
+        
+        function updateContractStats() {
+            const contracts = contractsCache;
+            const total = contracts.length;
+            let active = 0, expiring = 0, expired = 0;
+            
+            contracts.forEach(contract => {
+                const status = getContractStatus(contract);
+                switch (status) {
+                    case 'active': active++; break;
+                    case 'expiring': expiring++; break;
+                    case 'expired': expired++; break;
+                }
+            });
+            
+            document.getElementById('total-contracts').textContent = total;
+            document.getElementById('active-contracts').textContent = active;
+            document.getElementById('expiring-contracts').textContent = expiring;
+            document.getElementById('expired-contracts').textContent = expired;
+        }
+        
+        function loadFilterOptions() {
+            const buildings = getBuildings();
+            
+            // Load building filter
+            filterBuilding.innerHTML = '<option value="">Tất cả tòa nhà</option>';
+            buildings.forEach(building => {
+                filterBuilding.innerHTML += `<option value="${building.id}">${building.code}</option>`;
+            });
+            
+            // Only add event listeners once
+            if (!filterBuilding.hasEventListener) {
+                filterBuilding.addEventListener('change', function() {
+                    const selectedBuildingId = this.value;
+                    filterRoom.innerHTML = '<option value="">Tất cả phòng</option>';
+                    
+                    if (selectedBuildingId) {
+                        const building = buildings.find(b => b.id === selectedBuildingId);
+                        if (building && building.rooms) {
+                            building.rooms.forEach(room => {
+                                filterRoom.innerHTML += `<option value="${room}">${room}</option>`;
+                            });
+                        }
+                    }
+                    
+                    applyFilters();
+                });
+                filterBuilding.hasEventListener = true;
+            }
+            
+            // Apply filters when changed
+            if (!filterRoom.hasEventListener) {
+                filterRoom.addEventListener('change', applyFilters);
+                filterRoom.hasEventListener = true;
+            }
+            
+            if (!filterStatus.hasEventListener) {
+                filterStatus.addEventListener('change', applyFilters);
+                filterStatus.hasEventListener = true;
+            }
+        }
+        
+        function applyFilters() {
+            const buildingFilter = filterBuilding.value;
+            const roomFilter = filterRoom.value;
+            const statusFilter = filterStatus.value;
+            
+            let filteredContracts = contractsCache;
+            
+            if (buildingFilter) {
+                filteredContracts = filteredContracts.filter(contract => contract.buildingId === buildingFilter);
+            }
+            
+            if (roomFilter) {
+                filteredContracts = filteredContracts.filter(contract => contract.room === roomFilter);
+            }
+            
+            if (statusFilter) {
+                filteredContracts = filteredContracts.filter(contract => getContractStatus(contract) === statusFilter);
+            }
+            
+            renderContracts(filteredContracts);
+        }
+        
+        function renderContracts(contracts) {
+            const listEl = document.getElementById('contracts-list');
+            listEl.innerHTML = '';
+            
+            if (contracts.length === 0) {
+                listEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Không tìm thấy hợp đồng nào.</td></tr>';
+                return;
+            }
+            
+            const buildings = getBuildings();
+            const customers = getCustomers();
+            
+            contracts.forEach(contract => {
+                const building = buildings.find(b => b.id === contract.buildingId);
+                const customer = customers.find(c => c.id === contract.representativeId);
+                const status = getContractStatus(contract);
+                const statusInfo = getStatusInfo(status);
+                const contractNumber = `CT${contract.id.slice(-6).toUpperCase()}`;
+                
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="py-4 px-4 font-medium text-blue-600">${contractNumber}</td>
+                    <td class="py-4 px-4">
+                        <div>
+                            <div class="font-medium">${customer ? customer.name : 'N/A'}</div>
+                            <div class="text-sm text-gray-500">${building ? building.code : 'N/A'} - ${contract.room}</div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4">${formatDateDisplay(contract.startDate)}</td>
+                    <td class="py-4 px-4">${formatDateDisplay(contract.endDate)}</td>
+                    <td class="py-4 px-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${statusInfo.className}">
+                            ${statusInfo.text}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4">${new Intl.NumberFormat('vi-VN').format(contract.rentPrice)} VNĐ</td>
+                    <td class="py-4 px-4">
+                        <div class="flex gap-2">
+                            <button data-id="${contract.id}" class="edit-contract-btn text-sm font-medium text-blue-600 hover:underline">Sửa</button>
+                            ${status !== 'terminated' ? `<button data-id="${contract.id}" class="terminate-contract-btn text-sm font-medium text-red-600 hover:underline">Thanh lý</button>` : ''}
+                            <button data-id="${contract.id}" class="delete-contract-btn text-sm font-medium text-gray-600 hover:underline">Xóa</button>
+                        </div>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+        }
+
+        function loadBuildingDropdown() {
+            const buildings = getBuildings();
+            const selectEl = document.getElementById('contract-building');
+            selectEl.innerHTML = '<option value="">-- Chọn tòa nhà --</option>';
+            
+            buildings.forEach(building => {
+                selectEl.innerHTML += `<option value="${building.id}">${building.code}</option>`;
+            });
+        }
+
+        function loadRoomDropdown(buildingId) {
+            const buildings = getBuildings();
+            const building = buildings.find(b => b.id === buildingId);
+            const selectEl = document.getElementById('contract-room');
+            selectEl.innerHTML = '<option value="">-- Chọn phòng --</option>';
+            
+            if (building) {
+                building.rooms.forEach(room => {
+                    selectEl.innerHTML += `<option value="${room}">${room}</option>`;
+                });
+            }
+        }
+
+        let selectedCustomers = [];
+        
+        function loadCustomerOptions(searchTerm = '') {
+            const customers = getCustomers();
+            const container = document.getElementById('customer-options');
+            
+            if (customers.length === 0) {
+                container.innerHTML = '<div class="p-3 text-gray-500 text-sm text-center">Chưa có khách hàng nào.</div>';
+                return;
+            }
+            
+            const filteredCustomers = customers.filter(customer => 
+                customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                customer.phone.includes(searchTerm)
+            );
+            
+            if (filteredCustomers.length === 0) {
+                container.innerHTML = '<div class="p-3 text-gray-500 text-sm text-center">Không tìm thấy khách hàng.</div>';
+                return;
+            }
+            
+            container.innerHTML = filteredCustomers.map(customer => `
+                <label class="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b">
+                    <input type="checkbox" value="${customer.id}" class="customer-option-checkbox" ${selectedCustomers.includes(customer.id) ? 'checked' : ''}>
+                    <div class="flex-1">
+                        <div class="font-medium">${customer.name}</div>
+                        <div class="text-gray-500 text-sm">${customer.phone}</div>
+                    </div>
+                    <label class="flex items-center gap-1 text-sm">
+                        <input type="radio" name="representative" value="${customer.id}" class="representative-radio" ${selectedCustomers.includes(customer.id) ? '' : 'disabled'}>
+                        Đại diện
+                    </label>
+                </label>
+            `).join('');
+        }
+        
+        function updateSelectedCustomersDisplay() {
+            const customers = getCustomers();
+            const container = document.getElementById('selected-customers-display');
+            const textEl = document.getElementById('selected-customers-text');
+            
+            if (selectedCustomers.length === 0) {
+                textEl.textContent = 'Chọn khách hàng...';
+                container.innerHTML = '';
+                return;
+            }
+            
+            textEl.textContent = `Đã chọn ${selectedCustomers.length} khách hàng`;
+            
+            // Display selected customers
+            const selectedCustomerData = customers.filter(c => selectedCustomers.includes(c.id));
+            container.innerHTML = selectedCustomerData.map(customer => `
+                <div class="flex items-center justify-between p-2 bg-blue-50 rounded">
+                    <div>
+                        <span class="font-medium">${customer.name}</span>
+                        <span class="text-gray-500 text-sm ml-2">${customer.phone}</span>
+                    </div>
+                    <button type="button" class="text-red-500 hover:text-red-700" onclick="removeCustomer('${customer.id}')">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        function removeCustomer(customerId) {
+            selectedCustomers = selectedCustomers.filter(id => id !== customerId);
+            updateSelectedCustomersDisplay();
+            loadCustomerOptions(document.getElementById('customer-search').value);
+        }
+
+        function loadServicesList(buildingId) {
+            const services = getServices();
+            const container = document.getElementById('contract-services-list');
+            
+            const buildingServices = services.filter(service => 
+                service.buildings && service.buildings.includes(buildingId)
+            );
+            
+            if (buildingServices.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Không có phí dịch vụ nào cho tòa nhà này.</p>';
+                return;
+            }
+            
+            container.innerHTML = buildingServices.map(service => {
+                const isElectric = service.name.toLowerCase().includes('điện');
+                return `
+                    <div class="p-3 border rounded">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex-1">
+                                <span class="font-medium">${service.name}</span>
+                                <span class="text-gray-500 text-sm ml-2">${new Intl.NumberFormat('vi-VN').format(service.price)} VNĐ/${service.unit}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="text-sm">${isElectric ? 'Số điện ban đầu:' : 'Số lượng:'}</label>
+                                <input type="number" data-service-id="${service.id}" class="${isElectric ? 'electric-initial-reading' : 'service-quantity'} w-20 p-1 border rounded text-center" min="0" value="${isElectric ? '0' : '1'}">
+                            </div>
+                        </div>
+                        ${isElectric ? '<div class="text-xs text-gray-500">Số điện ban đầu sẽ được dùng để tính Hóa đơn tiền điện</div>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- DROPDOWN MENU ---
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.dropdown-toggle')) {
+                const dropdown = e.target.closest('.dropdown-menu');
+                const content = dropdown.querySelector('.dropdown-content');
+                const arrow = dropdown.querySelector('.dropdown-arrow');
+                
+                // Close other dropdowns
+                document.querySelectorAll('.dropdown-content').forEach(dc => {
+                    if (dc !== content) {
+                        dc.classList.remove('show');
+                    }
+                });
+                document.querySelectorAll('.dropdown-arrow').forEach(da => {
+                    if (da !== arrow) {
+                        da.classList.remove('rotated');
+                    }
+                });
+                
+                // Toggle current dropdown
+                content.classList.toggle('show');
+                arrow.classList.toggle('rotated');
+            }
+        });
+
+        // --- EVENT HANDLERS ---
+        buildingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('buildings');
+        });
+
+        servicesBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('services');
+        });
+
+        customersBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('customers');
+        });
+
+        contractsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('contracts');
+        });
+
+        billsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection('bills');
+        });
+
+        addBuildingBtn.addEventListener('click', () => {
+            buildingModalTitle.textContent = 'Thêm Tòa nhà';
+            buildingForm.reset();
+            document.getElementById('building-id').value = '';
+            openModal(buildingModal);
+        });
+
+        closeBuildingModalBtn.addEventListener('click', () => closeModal(buildingModal));
+        cancelBuildingBtn.addEventListener('click', () => closeModal(buildingModal));
+
+        buildingForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('building-id').value;
+            const code = document.getElementById('building-code').value.trim();
+            const address = document.getElementById('building-address').value.trim();
+            const roomsText = document.getElementById('building-rooms').value.trim();
+            const rooms = roomsText.split(',').map(room => room.trim()).filter(room => room);
+
+            if (!code || !address || rooms.length === 0) {
+                alert('Vui lòng nhập đầy đủ thông tin!');
+                return;
+            }
+
+            try {
+                const buildingData = {
+                    code,
+                    address,
+                    rooms,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                if (id) {
+                    // Edit existing building
+                    await setDoc(doc(db, 'buildings', id), buildingData);
+                    showToast('Cập nhật tòa nhà thành công!');
+                } else {
+                    // Add new building
+                    await addDoc(collection(db, 'buildings'), buildingData);
+                    showToast('Thêm tòa nhà thành công!');
+                }
+
+                closeModal(buildingModal);
+            } catch (error) {
+                console.error('Error saving building:', error);
+                showToast('Lỗi lưu tòa nhà: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('buildings-list').addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            
+            if (e.target.classList.contains('edit-building-btn')) {
+                const building = buildingsCache.find(b => b.id === id);
+                if (building) {
+                    buildingModalTitle.textContent = 'Sửa Tòa nhà';
+                    document.getElementById('building-id').value = building.id;
+                    document.getElementById('building-code').value = building.code || '';
+                    document.getElementById('building-address').value = building.address;
+                    document.getElementById('building-rooms').value = building.rooms.join(', ');
+                    openModal(buildingModal);
+                }
+            } else if (e.target.classList.contains('delete-building-btn')) {
+                if (confirm('Bạn có chắc muốn xóa tòa nhà này?')) {
+                    try {
+                        await deleteDoc(doc(db, 'buildings', id));
+                        showToast('Xóa tòa nhà thành công!');
+                    } catch (error) {
+                        console.error('Error deleting building:', error);
+                        showToast('Lỗi xóa tòa nhà: ' + error.message, 'error');
+                    }
+                }
+            }
+        });
+
+        addServiceBtn.addEventListener('click', () => {
+            serviceModalTitle.textContent = 'Thêm Phí dịch vụ';
+            serviceForm.reset();
+            document.getElementById('service-id').value = '';
+            loadBuildingCheckboxes();
+            openModal(serviceModal);
+        });
+
+        function loadBuildingCheckboxes(selectedBuildings = []) {
+            const buildings = getBuildings();
+            const container = document.getElementById('building-checkboxes');
+            
+            if (buildings.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Chưa có tòa nhà nào. Vui lòng thêm tòa nhà trước.</p>';
+                return;
+            }
+            
+            container.innerHTML = buildings.map(building => `
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" value="${building.id}" ${selectedBuildings.includes(building.id) ? 'checked' : ''} 
+                           class="building-checkbox rounded">
+                    <span class="text-sm font-medium text-blue-600">${building.code || 'N/A'}</span>
+                    <span class="text-sm text-gray-600">- ${building.address}</span>
+                </label>
+            `).join('');
+        }
+
+        closeServiceModalBtn.addEventListener('click', () => closeModal(serviceModal));
+        cancelServiceBtn.addEventListener('click', () => closeModal(serviceModal));
+
+        serviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('service-id').value;
+            const name = document.getElementById('service-name').value.trim();
+            const price = parseFormattedNumber(document.getElementById('service-price').value);
+            const unit = document.getElementById('service-unit').value.trim();
+            
+            // Get selected buildings
+            const selectedBuildings = Array.from(document.querySelectorAll('.building-checkbox:checked'))
+                .map(cb => cb.value);
+
+            if (!name || !price || !unit) {
+                alert('Vui lòng nhập đầy đủ thông tin bắt buộc!');
+                return;
+            }
+
+            if (selectedBuildings.length === 0) {
+                alert('Vui lòng chọn ít nhất một tòa nhà!');
+                return;
+            }
+
+            try {
+                const serviceData = {
+                    name,
+                    price,
+                    unit,
+                    buildings: selectedBuildings,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                if (id) {
+                    // Edit existing service
+                    await setDoc(doc(db, 'services', id), serviceData);
+                    showToast('Cập nhật dịch vụ thành công!');
+                } else {
+                    // Add new service
+                    await addDoc(collection(db, 'services'), serviceData);
+                    showToast('Thêm dịch vụ thành công!');
+                }
+
+                closeModal(serviceModal);
+            } catch (error) {
+                console.error('Error saving service:', error);
+                showToast('Lỗi lưu dịch vụ: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('services-list').addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            
+            if (e.target.classList.contains('edit-service-btn')) {
+                const service = servicesCache.find(s => s.id === id);
+                if (service) {
+                    serviceModalTitle.textContent = 'Sửa Phí dịch vụ';
+                    document.getElementById('service-id').value = service.id;
+                    document.getElementById('service-name').value = service.name;
+                    document.getElementById('service-price').value = formatNumber(service.price);
+                    document.getElementById('service-unit').value = service.unit;
+                    loadBuildingCheckboxes(service.buildings || []);
+                    openModal(serviceModal);
+                }
+            } else if (e.target.classList.contains('delete-service-btn')) {
+                if (confirm('Bạn có chắc muốn xóa phí dịch vụ này?')) {
+                    try {
+                        await deleteDoc(doc(db, 'services', id));
+                        showToast('Xóa dịch vụ thành công!');
+                    } catch (error) {
+                        console.error('Error deleting service:', error);
+                        showToast('Lỗi xóa dịch vụ: ' + error.message, 'error');
+                    }
+                }
+            }
+        });
+
+        addCustomerBtn.addEventListener('click', () => {
+            customerModalTitle.textContent = 'Thêm Khách hàng';
+            customerForm.reset();
+            document.getElementById('customer-id').value = '';
+            openModal(customerModal);
+        });
+
+        closeCustomerModalBtn.addEventListener('click', () => closeModal(customerModal));
+        cancelCustomerBtn.addEventListener('click', () => closeModal(customerModal));
+
+        customerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('customer-id').value;
+            const name = document.getElementById('customer-name').value.trim();
+            const phone = document.getElementById('customer-phone').value.trim();
+
+            if (!name || !phone) {
+                alert('Vui lòng nhập đầy đủ thông tin!');
+                return;
+            }
+
+            try {
+                const customerData = {
+                    name,
+                    phone,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                if (id) {
+                    // Edit existing customer
+                    await setDoc(doc(db, 'customers', id), customerData);
+                    showToast('Cập nhật khách hàng thành công!');
+                } else {
+                    // Add new customer
+                    await addDoc(collection(db, 'customers'), customerData);
+                    showToast('Thêm khách hàng thành công!');
+                }
+
+                closeModal(customerModal);
+            } catch (error) {
+                console.error('Error saving customer:', error);
+                showToast('Lỗi lưu khách hàng: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('customers-list').addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            
+            if (e.target.classList.contains('edit-customer-btn')) {
+                const customer = customersCache.find(c => c.id === id);
+                if (customer) {
+                    customerModalTitle.textContent = 'Sửa Khách hàng';
+                    document.getElementById('customer-id').value = customer.id;
+                    document.getElementById('customer-name').value = customer.name;
+                    document.getElementById('customer-phone').value = customer.phone;
+                    openModal(customerModal);
+                }
+            } else if (e.target.classList.contains('delete-customer-btn')) {
+                if (confirm('Bạn có chắc muốn xóa khách hàng này?')) {
+                    try {
+                        await deleteDoc(doc(db, 'customers', id));
+                        showToast('Xóa khách hàng thành công!');
+                    } catch (error) {
+                        console.error('Error deleting customer:', error);
+                        showToast('Lỗi xóa khách hàng: ' + error.message, 'error');
+                    }
+                }
+            }
+        });
+
+        addContractBtn.addEventListener('click', () => {
+            contractModalTitle.textContent = 'Thêm Hợp đồng thuê';
+            contractForm.reset();
+            document.getElementById('contract-id').value = '';
+            selectedCustomers = [];
+            loadBuildingDropdown();
+            loadCustomerOptions();
+            updateSelectedCustomersDisplay();
+            openModal(contractModal);
+        });
+
+        closeContractModalBtn.addEventListener('click', () => closeModal(contractModal));
+        cancelContractBtn.addEventListener('click', () => closeModal(contractModal));
+
+        // Building selection change
+        document.getElementById('contract-building').addEventListener('change', (e) => {
+            const buildingId = e.target.value;
+            if (buildingId) {
+                loadRoomDropdown(buildingId);
+                loadServicesList(buildingId);
+            } else {
+                document.getElementById('contract-room').innerHTML = '<option value="">-- Chọn phòng --</option>';
+                document.getElementById('contract-services-list').innerHTML = '';
+            }
+        });
+
+        // Customer selector events
+        document.getElementById('customer-selector-btn').addEventListener('click', () => {
+            const dropdown = document.getElementById('customer-dropdown');
+            dropdown.classList.toggle('hidden');
+        });
+
+        document.getElementById('customer-search').addEventListener('input', (e) => {
+            loadCustomerOptions(e.target.value);
+        });
+
+        document.addEventListener('change', (e) => {
+            if (e.target.classList.contains('customer-option-checkbox')) {
+                const customerId = e.target.value;
+                const representativeRadio = document.querySelector(`input[name="representative"][value="${customerId}"]`);
+                
+                if (e.target.checked) {
+                    if (!selectedCustomers.includes(customerId)) {
+                        selectedCustomers.push(customerId);
+                    }
+                    representativeRadio.disabled = false;
+                } else {
+                    selectedCustomers = selectedCustomers.filter(id => id !== customerId);
+                    representativeRadio.checked = false;
+                    representativeRadio.disabled = true;
+                }
+                
+                updateSelectedCustomersDisplay();
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const dropdown = document.getElementById('customer-dropdown');
+            const button = document.getElementById('customer-selector-btn');
+            
+            if (!dropdown.contains(e.target) && !button.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        contractForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const buildingId = document.getElementById('contract-building').value;
+            const room = document.getElementById('contract-room').value;
+            const startDate = document.getElementById('contract-start-date').value;
+            const endDate = document.getElementById('contract-end-date').value;
+            const paymentDay = parseInt(document.getElementById('contract-payment-day').value);
+            const rentPrice = parseFormattedNumber(document.getElementById('contract-rent-price').value);
+            const deposit = parseFormattedNumber(document.getElementById('contract-deposit').value);
+            
+            // Get selected customers and representative
+            const representativeId = document.querySelector('input[name="representative"]:checked')?.value;
+            
+            // Get services with quantities and electric readings
+            const services = [];
+            
+            // Get regular services
+            document.querySelectorAll('.service-quantity').forEach(input => {
+                const quantity = parseInt(input.value) || 0;
+                if (quantity > 0) {
+                    services.push({
+                        serviceId: input.dataset.serviceId,
+                        quantity: quantity,
+                        type: 'quantity'
+                    });
+                }
+            });
+            
+            // Get electric initial readings
+            document.querySelectorAll('.electric-initial-reading').forEach(input => {
+                const reading = parseInt(input.value) || 0;
+                services.push({
+                    serviceId: input.dataset.serviceId,
+                    initialReading: reading,
+                    type: 'electric'
+                });
+            });
+
+            if (!buildingId || !room || !startDate || !endDate || !paymentDay || !rentPrice || !deposit) {
+                alert('Vui lòng nhập đầy đủ thông tin bắt buộc!');
+                return;
+            }
+
+            if (selectedCustomers.length === 0) {
+                alert('Vui lòng chọn ít nhất một khách hàng!');
+                return;
+            }
+
+            if (!representativeId) {
+                alert('Vui lòng chọn người đại diện hợp đồng!');
+                return;
+            }
+
+            try {
+                const contractData = {
+                    buildingId,
+                    room,
+                    startDate,
+                    endDate,
+                    paymentDay,
+                    rentPrice,
+                    deposit,
+                    customers: selectedCustomers,
+                    representativeId,
+                    services,
+                    status: 'active',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                await addDoc(collection(db, 'contracts'), contractData);
+                showToast('Thêm hợp đồng thành công!');
+                closeModal(contractModal);
+            } catch (error) {
+                console.error('Error saving contract:', error);
+                showToast('Lỗi lưu hợp đồng: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('contracts-list').addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            
+            if (e.target.classList.contains('delete-contract-btn')) {
+                if (confirm('Bạn có chắc muốn xóa hợp đồng này?')) {
+                    try {
+                        await deleteDoc(doc(db, 'contracts', id));
+                        showToast('Xóa hợp đồng thành công!');
+                    } catch (error) {
+                        console.error('Error deleting contract:', error);
+                        showToast('Lỗi xóa hợp đồng: ' + error.message, 'error');
+                    }
+                }
+            }
+        });
+
+        // --- MONEY INPUT FORMATTING ---
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('money-input')) {
+                formatMoneyInput(e.target);
+            }
+        });
+
+        // Quick add customer from contract
+        addCustomerFromContractBtn.addEventListener('click', () => {
+            openModal(quickCustomerModal);
+        });
+
+        closeQuickCustomerModalBtn.addEventListener('click', () => closeModal(quickCustomerModal));
+        cancelQuickCustomerBtn.addEventListener('click', () => closeModal(quickCustomerModal));
+
+        quickCustomerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('quick-customer-name').value.trim();
+            const phone = document.getElementById('quick-customer-phone').value.trim();
+
+            if (!name || !phone) {
+                alert('Vui lòng nhập đầy đủ thông tin!');
+                return;
+            }
+
+            try {
+                // Add to customers database
+                const customerData = {
+                    name,
+                    phone,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                const docRef = await addDoc(collection(db, 'customers'), customerData);
+                const newCustomerId = docRef.id;
+
+                // Auto select the new customer
+                if (!selectedCustomers.includes(newCustomerId)) {
+                    selectedCustomers.push(newCustomerId);
+                }
+
+                // Add to cache temporarily (will be updated by listener)
+                customersCache.push({ id: newCustomerId, ...customerData });
+
+                // Refresh customer options and display
+                loadCustomerOptions(document.getElementById('customer-search').value);
+                updateSelectedCustomersDisplay();
+
+                // Clear form and close modal
+                quickCustomerForm.reset();
+                closeModal(quickCustomerModal);
+
+                // Show success message
+                showToast(`Đã thêm khách hàng "${name}" và tự động chọn!`);
+            } catch (error) {
+                console.error('Error adding quick customer:', error);
+                showToast('Lỗi thêm khách hàng: ' + error.message, 'error');
+            }
+        });
+
+        // Handle contract termination and editing
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('terminate-contract-btn')) {
+                const contractId = e.target.dataset.id;
+                if (confirm('Bạn có chắc chắn muốn thanh lý hợp đồng này?')) {
+                    terminateContract(contractId);
+                }
+            }
+            
+            if (e.target.classList.contains('edit-contract-btn')) {
+                const contractId = e.target.dataset.id;
+                editContract(contractId);
+            }
+        });
+        
+        async function terminateContract(contractId) {
+            try {
+                const contractData = {
+                    status: 'terminated',
+                    terminatedAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+
+                await setDoc(doc(db, 'contracts', contractId), contractData, { merge: true });
+                showToast('Đã thanh lý hợp đồng thành công!');
+            } catch (error) {
+                console.error('Error terminating contract:', error);
+                showToast('Lỗi thanh lý hợp đồng: ' + error.message, 'error');
+            }
+        }
+        
+        function editContract(contractId) {
+            const contracts = getContracts();
+            const contract = contracts.find(c => c.id === contractId);
+            
+            if (contract) {
+                // Fill form with contract data
+                document.getElementById('contract-id').value = contract.id;
+                document.getElementById('contract-building').value = contract.buildingId;
+                loadContractRooms(contract.buildingId);
+                document.getElementById('contract-room').value = contract.room;
+                document.getElementById('contract-start-date').value = contract.startDate;
+                document.getElementById('contract-end-date').value = contract.endDate;
+                document.getElementById('contract-payment-day').value = contract.paymentDay;
+                document.getElementById('contract-rent-price').value = new Intl.NumberFormat('vi-VN').format(contract.rentPrice);
+                document.getElementById('contract-deposit').value = new Intl.NumberFormat('vi-VN').format(contract.deposit);
+                
+                // Set modal title
+                contractModalTitle.textContent = "Sửa Hợp đồng Thuê";
+                
+                // Load and select customers
+                loadContractCustomers(contract.buildingId, contract.room);
+                setTimeout(() => {
+                    // Select customers
+                    contract.tenantIds.forEach(tenantId => {
+                        const checkbox = document.querySelector(`input[type="checkbox"][value="${tenantId}"]`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                    
+                    // Select representative
+                    const repRadio = document.querySelector(`input[name="representative"][value="${contract.representativeId}"]`);
+                    if (repRadio) repRadio.checked = true;
+                }, 500);
+                
+                openModal(contractModal);
+            }
+        }
+
+        // --- BILLS MANAGEMENT ---
+        
+        function loadBills() {
+            billsCache = getBills();
+            billsCache.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            renderBills(billsCache);
+            updateBillStats();
+            loadBillFilterOptions();
+        }
+        
+        function renderBills(bills) {
+            const listEl = document.getElementById('bills-list');
+            listEl.innerHTML = '';
+            
+            if (bills.length === 0) {
+                listEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Không tìm thấy hóa đơn nào.</td></tr>';
+                return;
+            }
+            
+            const buildings = getBuildings();
+            const customers = getCustomers();
+            
+            bills.forEach(bill => {
+                const building = buildings.find(b => b.id === bill.buildingId);
+                const customer = customers.find(c => c.id === bill.customerId);
+                const billNumber = `INV${bill.id.slice(-6).toUpperCase()}`;
+                
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                tr.innerHTML = `
+                    <td class="py-4 px-4">
+                        <button data-id="${bill.id}" class="view-bill-detail-btn text-blue-600 hover:underline font-medium">
+                            ${billNumber}
+                        </button>
+                    </td>
+                    <td class="py-4 px-4">
+                        <div>
+                            <div class="font-medium">${customer ? customer.name : 'N/A'}</div>
+                            <div class="text-sm text-gray-500">${building ? building.code : 'N/A'} - ${bill.room}</div>
+                        </div>
+                    </td>
+                    <td class="py-4 px-4">Tháng ${bill.period}/${new Date(bill.createdAt).getFullYear()}</td>
+                    <td class="py-4 px-4">${formatDateDisplay(bill.billDate)}</td>
+                    <td class="py-4 px-4">${new Intl.NumberFormat('vi-VN').format(bill.totalAmount)} VNĐ</td>
+                    <td class="py-4 px-4">
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${bill.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${bill.status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                        </span>
+                    </td>
+                    <td class="py-4 px-4">
+                        <div class="flex gap-2">
+                            <button data-id="${bill.id}" class="toggle-bill-status-btn text-sm font-medium ${bill.status === 'paid' ? 'text-yellow-600' : 'text-green-600'} hover:underline">
+                                ${bill.status === 'paid' ? 'Chưa TT' : 'Đã TT'}
+                            </button>
+                            <button data-id="${bill.id}" class="edit-bill-btn text-sm font-medium text-blue-600 hover:underline">Sửa</button>
+                            <button data-id="${bill.id}" class="delete-bill-btn text-sm font-medium text-red-600 hover:underline">Xóa</button>
+                        </div>
+                    </td>
+                `;
+                listEl.appendChild(tr);
+            });
+            
+            // Add event listeners for bill detail buttons
+            document.querySelectorAll('.view-bill-detail-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const billId = btn.getAttribute('data-id');
+                    showBillDetail(billId);
+                });
+            });
+        }
+        
+        function updateBillStats() {
+            const selectedMonth = filterBillMonth.value;
+            let filteredBills = billsCache;
+            
+            // Filter by month if selected
+            if (selectedMonth) {
+                filteredBills = billsCache.filter(bill => bill.period == selectedMonth);
+            }
+            
+            const totalAmount = filteredBills.reduce((sum, bill) => sum + bill.totalAmount, 0);
+            const collectedAmount = filteredBills.filter(bill => bill.status === 'paid').reduce((sum, bill) => sum + bill.totalAmount, 0);
+            const pendingAmount = totalAmount - collectedAmount;
+            
+            document.getElementById('total-bill-amount').textContent = new Intl.NumberFormat('vi-VN').format(totalAmount) + ' VNĐ';
+            document.getElementById('collected-amount').textContent = new Intl.NumberFormat('vi-VN').format(collectedAmount) + ' VNĐ';
+            document.getElementById('pending-amount').textContent = new Intl.NumberFormat('vi-VN').format(pendingAmount) + ' VNĐ';
+        }
+        
+        function loadBillFilterOptions() {
+            const buildings = getBuildings();
+            
+            // Load building filter
+            filterBillBuilding.innerHTML = '<option value="">Tất cả tòa nhà</option>';
+            buildings.forEach(building => {
+                filterBillBuilding.innerHTML += `<option value="${building.id}">${building.code}</option>`;
+            });
+            
+            // Only add event listeners once
+            if (!filterBillBuilding.hasEventListener) {
+                filterBillBuilding.addEventListener('change', function() {
+                    const selectedBuildingId = this.value;
+                    filterBillRoom.innerHTML = '<option value="">Tất cả phòng</option>';
+                    
+                    if (selectedBuildingId) {
+                        const building = buildings.find(b => b.id === selectedBuildingId);
+                        if (building && building.rooms) {
+                            building.rooms.forEach(room => {
+                                filterBillRoom.innerHTML += `<option value="${room}">${room}</option>`;
+                            });
+                        }
+                    }
+                    
+                    applyBillFilters();
+                });
+                filterBillBuilding.hasEventListener = true;
+            }
+            
+            if (!filterBillRoom.hasEventListener) {
+                filterBillRoom.addEventListener('change', applyBillFilters);
+                filterBillRoom.hasEventListener = true;
+            }
+            
+            if (!filterBillMonth.hasEventListener) {
+                filterBillMonth.addEventListener('change', function() {
+                    applyBillFilters();
+                    updateBillStats(); // Update stats when month changes
+                });
+                filterBillMonth.hasEventListener = true;
+            }
+            
+            if (!filterBillStatus.hasEventListener) {
+                filterBillStatus.addEventListener('change', applyBillFilters);
+                filterBillStatus.hasEventListener = true;
+            }
+        }
+        
+        function applyBillFilters() {
+            const buildingFilter = filterBillBuilding.value;
+            const roomFilter = filterBillRoom.value;
+            const monthFilter = filterBillMonth.value;
+            const statusFilter = filterBillStatus.value;
+            
+            let filteredBills = billsCache;
+            
+            if (buildingFilter) {
+                filteredBills = filteredBills.filter(bill => bill.buildingId === buildingFilter);
+            }
+            
+            if (roomFilter) {
+                filteredBills = filteredBills.filter(bill => bill.room === roomFilter);
+            }
+            
+            if (monthFilter) {
+                filteredBills = filteredBills.filter(bill => bill.period == monthFilter);
+            }
+            
+            if (statusFilter) {
+                filteredBills = filteredBills.filter(bill => bill.status === statusFilter);
+            }
+            
+            renderBills(filteredBills);
+        }
+
+        // --- NEW/IMPROVED BILL DETAIL FUNCTION ---
+        function showBillDetail(billId) {
+            const bill = billsCache.find(b => b.id === billId);
+            if (!bill) {
+                alert('Không tìm thấy hóa đơn!');
+                return;
+            }
+
+            const building = getBuildings().find(b => b.id === bill.buildingId);
+            const customer = getCustomers().find(c => c.id === bill.customerId);
+            const contract = getContracts().find(c => c.buildingId === bill.buildingId && c.room === bill.room && getContractStatus(c) === 'active');
+            
+            const setElementText = (id, text) => document.getElementById(id).textContent = text || 'N/A';
+            const setElementSrc = (id, src) => document.getElementById(id).src = src || '';
+            const formatVND = (num) => new Intl.NumberFormat('vi-VN').format(num) + ' VNĐ';
+
+            setElementText('bill-detail-number', `INV${bill.id.slice(-6).toUpperCase()}`);
+            setElementText('bill-detail-date', formatDateDisplay(bill.billDate));
+            
+            let dueDate = 'N/A';
+            if(contract) {
+                const billYear = new Date(bill.billDate).getFullYear();
+                dueDate = `${String(contract.paymentDay).padStart(2, '0')}/${String(bill.period).padStart(2, '0')}/${billYear}`;
+            }
+            setElementText('bill-detail-due-date', dueDate);
+
+            setElementText('bill-detail-room', bill.room);
+            setElementText('bill-detail-customer-name', customer ? customer.name : 'N/A');
+            setElementText('bill-detail-address', building ? building.address : 'N/A');
+            
+            const billYear = new Date(bill.createdAt).getFullYear();
+            setElementText('bill-detail-title', `Hóa Đơn Tiền Nhà Tháng ${bill.period}/${billYear}`);
+
+            const servicesTableBody = document.getElementById('bill-detail-services-table');
+            servicesTableBody.innerHTML = '';
+            let itemIndex = 1;
+
+            if (bill.services && Array.isArray(bill.services)) {
+                // Sort services: rent -> electric -> water -> other services
+                const sortedServices = [...bill.services].sort((a, b) => {
+                    const getOrder = (service) => {
+                        if (service.type === 'rent' || service.serviceName === 'Tiền nhà') return 1;
+                        if (service.type === 'electric' || service.serviceName === 'Tiền điện') return 2;
+                        if (service.serviceName === 'Tiền nước') return 3;
+                        return 4; // other services
+                    };
+                    return getOrder(a) - getOrder(b);
+                });
+
+                sortedServices.forEach(item => {
+                    const row = document.createElement('tr');
+                    row.className = 'border-b';
+                    
+                    let content = item.serviceName;
+                    let unitPriceDisplay = new Intl.NumberFormat('vi-VN').format(item.unitPrice || 0);
+                    let quantityDisplay = item.quantity;
+                    
+                    if (item.type === 'rent') {
+                        quantityDisplay = item.quantityDisplay || '1';
+                        // Add date range display for rent
+                        if (item.fromDate && item.toDate) {
+                            // Format dates from YYYY-MM-DD to DD/MM (short format)
+                            const formatDateShort = (dateStr) => {
+                                const [year, month, day] = dateStr.split('-');
+                                return `${day}/${month}`;
+                            };
+                            const fromDateShort = formatDateShort(item.fromDate);
+                            const toDateShort = formatDateShort(item.toDate);
+                            content += `<br><span class="text-xs text-gray-500">(${fromDateShort} đến ${toDateShort})</span>`;
+                        }
+                    } else if (item.type === 'electric') {
+                        content += `<br><span class="text-xs text-gray-500">(SC: ${item.oldReading} - SM: ${item.newReading})</span>`;
+                        quantityDisplay = item.quantity;
+                    }
+
+                    row.innerHTML = `
+                        <td class="py-2 px-3 border border-gray-800">${itemIndex++}</td>
+                        <td class="py-2 px-3 border border-gray-800">${content}</td>
+                        <td class="py-2 px-3 text-center border border-gray-800">${unitPriceDisplay}</td>
+                        <td class="py-2 px-3 text-center border border-gray-800">${quantityDisplay}</td>
+                        <td class="py-2 px-3 text-right font-medium border border-gray-800">${formatVND(item.amount)}</td>
+                    `;
+                    servicesTableBody.appendChild(row);
+                });
+            } else {
+                // Fallback for very old data structure before 'services' array
+                servicesTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center">Không có chi tiết dịch vụ. Tổng tiền: ${formatVND(bill.totalAmount)}</td></tr>`;
+            }
+            
+            const finalTotal = bill.totalAmount;
+            setElementText('bill-detail-subtotal', formatVND(finalTotal));
+            setElementText('bill-detail-due-amount', formatVND(finalTotal));
+            
+            const qrContent = `THANHTOAN PHONG${bill.room} T${bill.period}${new Date(bill.createdAt).getFullYear()}`;
+            const qrUrl = `https://img.vietqr.io/image/${YOUR_BANK_ID}-${YOUR_ACCOUNT_NO}-qr_only.jpg?amount=${finalTotal}&addInfo=${encodeURIComponent(qrContent)}`;
+            setElementSrc('bill-detail-qr', qrUrl);
+
+            openModal(billDetailModal);
+        }
+
+        function loadBillBuildings() {
+            const buildings = getBuildings();
+            const selectEl = document.getElementById('bill-building');
+            selectEl.innerHTML = '<option value="">-- Chọn tòa nhà --</option>';
+            
+            buildings.forEach(building => {
+                selectEl.innerHTML += `<option value="${building.id}">${building.code}</option>`;
+            });
+        }
+
+        function loadBillRooms(buildingId) {
+            const buildings = getBuildings();
+            const building = buildings.find(b => b.id === buildingId);
+            const selectEl = document.getElementById('bill-room');
+            selectEl.innerHTML = '<option value="">-- Chọn phòng --</option>';
+            
+            if (building && building.rooms) {
+                building.rooms.forEach(room => {
+                    selectEl.innerHTML += `<option value="${room}">${room}</option>`;
+                });
+            }
+        }
+
+        function loadBillCustomer(buildingId, room) {
+            const contract = contractsCache.find(c => 
+                c.buildingId === buildingId && 
+                c.room === room && 
+                getContractStatus(c) === 'active'
+            );
+            
+            const customerInput = document.getElementById('bill-customer');
+            const customerIdInput = document.getElementById('bill-customer-id');
+            
+            if (contract) {
+                const customer = customersCache.find(c => c.id === contract.representativeId);
+                if (customer) {
+                    customerInput.value = customer.name;
+                    customerIdInput.value = customer.id;
+                    loadBillServices(contract);
+                    return;
+                }
+            }
+            
+            customerInput.value = '';
+            customerIdInput.value = '';
+            clearBillServices();
+        }
+
+        function loadBillServices(contract) {
+            const listEl = document.getElementById('bill-services-list');
+            listEl.innerHTML = '';
+            
+            if (!contract) {
+                listEl.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Không tìm thấy hợp đồng</td></tr>';
+                return;
+            }
+
+            const selectedPeriod = document.getElementById('bill-period').value;
+            if (!selectedPeriod) {
+                listEl.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">Vui lòng chọn kỳ thanh toán</td></tr>';
+                return;
+            }
+            
+            const year = new Date().getFullYear();
+            const monthNumber = parseInt(selectedPeriod); // 1-12
+            
+            // Create dates in local timezone to avoid timezone issues
+            const firstDayOfMonth = new Date(year, monthNumber - 1, 1); // month - 1 for 0-based index
+            const lastDayOfMonth = new Date(year, monthNumber, 0); // month + 0 gives last day of previous month = last day of current month
+            
+            // Format as YYYY-MM-DD without timezone conversion
+            const formatDateLocal = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+            
+            const firstDay = formatDateLocal(firstDayOfMonth);
+            const lastDay = formatDateLocal(lastDayOfMonth);
+            
+            console.log('Period:', selectedPeriod, 'Month:', monthNumber, 'First:', firstDay, 'Last:', lastDay);
+            
+            // Add rent row first
+            const rentRow = document.createElement('tr');
+            rentRow.className = 'border-b';
+            rentRow.innerHTML = `
+                <td class="py-2 px-3 font-medium">Tiền nhà</td>
+                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(contract.rentPrice || 0)} VNĐ/tháng</td>
+                <td class="py-2 px-3">
+                    <input type="date" value="${firstDay}" class="w-28 text-xs p-1 border rounded">
+                </td>
+                <td class="py-2 px-3">
+                    <input type="date" value="${lastDay}" class="w-28 text-xs p-1 border rounded">
+                </td>
+                <td class="py-2 px-3">${lastDayOfMonth.getDate()} ngày</td>
+                <td class="py-2 px-3 font-bold text-blue-600 service-total">${new Intl.NumberFormat('vi-VN').format(contract.rentPrice || 0)} VNĐ</td>
+            `;
+            listEl.appendChild(rentRow);
+            
+            if (contract.services && contract.services.length > 0) {
+                // Sort services: electric -> water -> other services
+                const sortedServices = [...contract.services].sort((a, b) => {
+                    const serviceA = servicesCache.find(s => s.id === a.serviceId);
+                    const serviceB = servicesCache.find(s => s.id === b.serviceId);
+                    
+                    const getOrder = (service, contractService) => {
+                        if (contractService.type === 'electric' || (service && service.name === 'Tiền điện')) return 1;
+                        if (service && service.name === 'Tiền nước') return 2;
+                        return 3; // other services
+                    };
+                    
+                    return getOrder(serviceA, a) - getOrder(serviceB, b);
+                });
+
+                sortedServices.forEach(contractService => {
+                    const service = servicesCache.find(s => s.id === contractService.serviceId);
+                    if (service) {
+                        const serviceRow = document.createElement('tr');
+                        serviceRow.className = 'border-b';
+                        
+                        if (contractService.type === 'electric') {
+                            serviceRow.innerHTML = `
+                                <td class="py-2 px-3 font-medium">${service.name}</td>
+                                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(service.price)} VNĐ/${service.unit}</td>
+                                <td class="py-2 px-3">
+                                    <input type="number" value="${contractService.initialReading || 0}" class="w-20 text-xs p-1 border rounded electric-old-reading" readonly placeholder="Số cũ">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="number" class="w-20 text-xs p-1 border rounded electric-new-reading" data-service-id="${service.id}" data-price="${service.price}" placeholder="Số mới">
+                                </td>
+                                <td class="py-2 px-3 text-gray-400">-</td>
+                                <td class="py-2 px-3 font-bold text-blue-600 service-total">0 VNĐ</td>
+                            `;
+                        } else {
+                            serviceRow.innerHTML = `
+                                <td class="py-2 px-3 font-medium">${service.name}</td>
+                                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(service.price)} VNĐ/${service.unit}</td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${firstDay}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${lastDay}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="number" value="${contractService.quantity}" class="w-20 text-xs p-1 border rounded service-quantity" data-service-id="${service.id}" data-price="${service.price}">
+                                </td>
+                                <td class="py-2 px-3 font-bold text-blue-600 service-total">${new Intl.NumberFormat('vi-VN').format(service.price * contractService.quantity)} VNĐ</td>
+                            `;
+                        }
+                        listEl.appendChild(serviceRow);
+                    }
+                });
+            }
+            
+            // ĐẢM BẢO TÍNH TOÁN ĐÚNG SAU KHI RENDER XONG
+            calculateBillTotal();
+        }       
+        
+        function clearBillServices() {
+            document.getElementById('bill-services-list').innerHTML = '';
+            document.getElementById('bill-total-amount').textContent = '0 VNĐ';
+        }
+
+        function calculateBillTotal() {
+            let total = 0;
+            document.querySelectorAll('.service-total').forEach(el => {
+                const text = el.textContent.replace(/[^\d]/g, '');
+                total += parseInt(text) || 0;
+            });
+            document.getElementById('bill-total-amount').textContent = new Intl.NumberFormat('vi-VN').format(total) + ' VNĐ';
+        }
+
+        document.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('toggle-bill-status-btn')) {
+                const billId = e.target.dataset.id;
+                const bill = billsCache.find(b => b.id === billId);
+                if (bill) {
+                    try {
+                        const newStatus = bill.status === 'paid' ? 'unpaid' : 'paid';
+                        await setDoc(doc(db, 'bills', billId), {
+                            status: newStatus,
+                            updatedAt: serverTimestamp()
+                        }, { merge: true });
+                        showToast(`Đã cập nhật trạng thái Hóa đơn!`);
+                    } catch (error) {
+                        console.error('Error updating bill status:', error);
+                        showToast('Lỗi cập nhật trạng thái: ' + error.message, 'error');
+                    }
+                }
+            }
+            
+            if (e.target.classList.contains('edit-bill-btn')) {
+                editBill(e.target.dataset.id);
+            }
+            
+            if (e.target.classList.contains('delete-bill-btn')) {
+                if (confirm('Bạn có chắc chắn muốn xóa hóa đơn này?')) {
+                    deleteBill(e.target.dataset.id);
+                }
+            }
+        });
+        
+        function editBill(billId) {
+            const bill = billsCache.find(b => b.id === billId);
+            if (!bill) return;
+
+            billModalTitle.textContent = "Sửa Hóa đơn Tiền Nhà";
+            loadBillBuildings();
+            document.getElementById('bill-id').value = bill.id;
+            document.getElementById('bill-building').value = bill.buildingId;
+            loadBillRooms(bill.buildingId);
+
+            setTimeout(() => {
+                document.getElementById('bill-room').value = bill.room;
+                document.getElementById('bill-period').value = bill.period;
+                document.getElementById('bill-date').value = bill.billDate;
+                
+                const customer = customersCache.find(c => c.id === bill.customerId);
+                if (customer) {
+                    document.getElementById('bill-customer').value = customer.name;
+                    document.getElementById('bill-customer-id').value = customer.id;
+                }
+
+                const listEl = document.getElementById('bill-services-list');
+                listEl.innerHTML = '';
+
+                if(bill.services && bill.services.length > 0) {
+                    bill.services.forEach(item => {
+                        const serviceRow = document.createElement('tr');
+                        serviceRow.className = 'border-b';
+                        
+                        if (item.type === 'rent') {
+                             serviceRow.innerHTML = `
+                                <td class="py-2 px-3 font-medium">${item.serviceName}</td>
+                                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(item.unitPrice || 0)} VNĐ/${item.unit || 'tháng'}</td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${item.fromDate}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${item.toDate}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">${item.quantityDisplay}</td>
+                                <td class="py-2 px-3 font-bold text-blue-600 service-total">${new Intl.NumberFormat('vi-VN').format(item.amount)} VNĐ</td>
+                            `;
+                        } else if (item.type === 'electric') {
+                            serviceRow.innerHTML = `
+                                <td class="py-2 px-3 font-medium">${item.serviceName}</td>
+                                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(item.unitPrice)} VNĐ/${item.unit}</td>
+                                <td class="py-2 px-3">
+                                    <input type="number" value="${item.oldReading}" class="w-20 text-xs p-1 border rounded electric-old-reading" readonly>
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="number" value="${item.newReading}" class="w-20 text-xs p-1 border rounded electric-new-reading" data-service-id="${item.serviceId}" data-price="${item.unitPrice}">
+                                </td>
+                                <td class="py-2 px-3 text-gray-400">-</td>
+                                <td class="py-2 px-3 font-bold text-blue-600 service-total">${new Intl.NumberFormat('vi-VN').format(item.amount)} VNĐ</td>
+                            `;
+                        } else if (item.type === 'service') {
+                            serviceRow.innerHTML = `
+                                <td class="py-2 px-3 font-medium">${item.serviceName}</td>
+                                <td class="py-2 px-3">${new Intl.NumberFormat('vi-VN').format(item.unitPrice)} VNĐ/${item.unit}</td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${item.fromDate}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="date" value="${item.toDate}" class="w-28 text-xs p-1 border rounded">
+                                </td>
+                                <td class="py-2 px-3">
+                                    <input type="number" value="${item.quantity}" class="w-20 text-xs p-1 border rounded service-quantity" data-service-id="${item.serviceId}" data-price="${item.unitPrice}">
+                                </td>
+                                <td class="py-2 px-3 font-bold text-blue-600 service-total">${new Intl.NumberFormat('vi-VN').format(item.amount)} VNĐ</td>
+                            `;
+                        }
+                        listEl.appendChild(serviceRow);
+                    });
+                    calculateBillTotal();
+                }
+            }, 300);
+            openModal(billModal);
+        }
+        
+        async function deleteBill(billId) {
+            try {
+                await deleteDoc(doc(db, 'bills', billId));
+                showToast('Đã xóa hóa đơn thành công!');
+            } catch (error) {
+                console.error('Error deleting bill:', error);
+                showToast('Lỗi xóa hóa đơn: ' + error.message, 'error');
+            }
+        }
+
+        // --- DATE INPUT HANDLERS ---
+        document.addEventListener('click', function(e) {
+            if (e.target.type === 'date') {
+                // Single click opens calendar
+                e.target.showPicker();
+            }
+        });
+
+        document.addEventListener('dblclick', function(e) {
+            if (e.target.type === 'date') {
+                // Double click allows manual typing
+                e.target.type = 'text';
+                e.target.placeholder = 'YYYY-MM-DD';
+                e.target.addEventListener('blur', function() {
+                    this.type = 'date';
+                }, { once: true });
+                e.target.addEventListener('keypress', function(event) {
+                    if (event.key === 'Enter') {
+                        this.type = 'date';
+                        this.blur();
+                    }
+                });
+            }
+        });
+
+        // --- INITIAL LOAD ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Firebase first
+            initializeFirebase();
+            
+            // Show main section by default  
+            showSection('bills');
+            
+            // loadTenants for compatibility
+            tenantsCache = customersCache;
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nhà Trọ - Khách Hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .app-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .status-paid { background: #dcfce7; color: #15803d; }
+        .status-unpaid { background: #fef3c7; color: #d97706; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Loading Screen -->
+        <div id="loading-screen" class="gradient-bg h-screen flex items-center justify-center">
+            <div class="text-center text-white">
+                <div class="w-16 h-16 mx-auto mb-4 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <div class="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+                <p class="text-lg">Đang kết nối...</p>
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div id="login-screen" class="hidden gradient-bg h-screen">
+            <div class="pt-20 px-6">
+                <div class="text-center text-white mb-10">
+                    <div class="w-24 h-24 mx-auto mb-4 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-12 h-12" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-9 9a1 1 0 001.414 1.414L10 4.414l8.293 8.293a1 1 0 001.414-1.414l-9-9z"/>
+                            <path d="M17 11v6a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4a1 1 0 00-1-1H8a1 1 0 00-1 1v4a1 1 0 01-1 1H2a1 1 0 01-1-1v-6a1 1 0 01.293-.707l7-7a1 1 0 011.414 0l7 7A1 1 0 0117 11z"/>
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold mb-2">Quản Lý Nhà Trọ</h1>
+                    <p class="text-white text-opacity-80">Xem hóa đơn và thông tin thuê trọ</p>
+                </div>
+
+                <div class="card">
+                    <h2 class="text-xl font-bold mb-2">Đăng Nhập</h2>
+                    <p class="text-gray-600 mb-6">Nhập số điện thoại để xem thông tin hóa đơn</p>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Số điện thoại</label>
+                        <input type="tel" id="phone-input" placeholder="0961512412" maxlength="10" 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+
+                    <button id="login-btn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 font-semibold">
+                        Đăng Nhập
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Home Screen -->
+        <div id="home-screen" class="hidden">
+            <!-- Header -->
+            <div class="gradient-bg text-white p-6 pb-8">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-lg font-semibold" id="user-name">Xin chào</h1>
+                        <p class="text-white text-opacity-80 text-sm" id="user-phone"></p>
+                    </div>
+                    <button onclick="logout()" class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="px-6 -mt-4 mb-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="card">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Chưa thanh toán</p>
+                                <p class="font-bold text-sm" id="unpaid-amount">0 VNĐ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-9 9a1 1 0 001.414 1.414L10 4.414l8.293 8.293a1 1 0 001.414-1.414l-9-9z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Tổng phòng</p>
+                                <p class="font-bold text-sm" id="rooms-count">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bills List -->
+            <div class="px-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold">Hóa đơn gần đây</h2>
+                    <button onclick="refreshData()" class="text-blue-600 text-sm">Làm mới</button>
+                </div>
+                <div id="bills-list">
+                    <!-- Bills will be loaded here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Bill Detail Modal -->
+        <div id="bill-detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50">
+            <div class="bg-white rounded-t-3xl mt-20 h-full overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Chi tiết hóa đơn</h2>
+                        <button onclick="closeBillDetail()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="bill-detail-content">
+                        <!-- Bill detail content -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase and App Logic -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js';
+        import { getFirestore, collection, query, where, getDocs, orderBy } from 'https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js';
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2m1K7pijNC1yirw_t36Rc3HnzCsD8pCs",
+            authDomain: "nha-tro-53ca7.firebaseapp.com",
+            projectId: "nha-tro-53ca7",
+            storageBucket: "nha-tro-53ca7.firebasestorage.app",
+            messagingSenderId: "415886594203",
+            appId: "1:415886594203:web:f3cda09037973176c9763e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+        let bills = [];
+        let buildings = [];
+        let contracts = [];
+
+        // Initialize app
+        async function initApp() {
+            try {
+                await signInAnonymously(auth);
+                
+                const savedPhone = localStorage.getItem('userPhone');
+                if (savedPhone) {
+                    const customer = await loadCustomerData(savedPhone);
+                    if (customer) {
+                        await showHome(customer);
+                        return;
+                    }
+                }
+                
+                showLogin();
+            } catch (error) {
+                console.error('Init error:', error);
+                showLogin();
+            } finally {
+                document.getElementById('loading-screen').classList.add('hidden');
+            }
+        }
+
+        async function loadCustomerData(phone) {
+            try {
+                const q = query(collection(db, 'customers'), where('phone', '==', phone));
+                const snapshot = await getDocs(q);
+                
+                if (!snapshot.empty) {
+                    const doc = snapshot.docs[0];
+                    return { id: doc.id, ...doc.data() };
+                }
+                return null;
+            } catch (error) {
+                console.error('Error loading customer:', error);
+                return null;
+            }
+        }
+
+        async function loadUserData(customerId) {
+            try {
+                console.log('Loading data for customer ID:', customerId);
+                
+                // Load buildings
+                const buildingsQuery = query(collection(db, 'buildings'));
+                const buildingsSnapshot = await getDocs(buildingsQuery);
+                buildings = buildingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Load contracts
+                const contractsQuery = query(collection(db, 'contracts'), where('representativeId', '==', customerId));
+                const contractsSnapshot = await getDocs(contractsQuery);
+                contracts = contractsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                // Load bills - TÌM THEO CUSTOMER ID
+                const billsQuery = query(collection(db, 'bills'), where('customerId', '==', customerId));
+                const billsSnapshot = await getDocs(billsQuery);
+                bills = billsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                
+                console.log('Bills found:', bills.length);
+
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('home-screen').classList.add('hidden');
+        }
+
+        async function showHome(customer) {
+            currentUser = customer;
+            document.getElementById('user-name').textContent = `Xin chào, ${customer.name}`;
+            document.getElementById('user-phone').textContent = customer.phone;
+            
+            await loadUserData(customer.id);
+            lastBillCount = bills.length; // Set initial count
+            renderHomeData();
+            
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('home-screen').classList.remove('hidden');
+        }
+
+        function renderHomeData() {
+            // Update summary
+            const unpaidBills = bills.filter(bill => bill.status === 'unpaid');
+            const totalUnpaid = unpaidBills.reduce((sum, bill) => sum + (bill.totalAmount || 0), 0);
+            
+            document.getElementById('unpaid-amount').textContent = formatCurrency(totalUnpaid);
+            document.getElementById('rooms-count').textContent = contracts.length;
+
+            // Render bills
+            const billsList = document.getElementById('bills-list');
+            if (bills.length === 0) {
+                billsList.innerHTML = `
+                    <div class="card text-center text-gray-500">
+                        <svg class="w-12 h-12 mx-auto mb-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/>
+                        </svg>
+                        <p>Chưa có hóa đơn nào</p>
+                    </div>
+                `;
+            } else {
+                billsList.innerHTML = bills.map(bill => {
+                    const building = buildings.find(b => b.id === bill.buildingId);
+                    const statusClass = bill.status === 'paid' ? 'status-paid' : 'status-unpaid';
+                    const statusText = bill.status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán';
+                    
+                    return `
+                        <div class="card cursor-pointer" onclick="showBillDetail('${bill.id}')">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="font-semibold">${building?.code || 'N/A'} - ${bill.room}</h3>
+                                    <p class="text-sm text-gray-500">Tháng ${bill.period}</p>
+                                </div>
+                                <span class="px-2 py-1 rounded-full text-xs ${statusClass}">
+                                    ${statusText}
+                                </span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-blue-600">${formatCurrency(bill.totalAmount || 0)}</span>
+                                <span class="text-xs text-gray-500">${formatDate(bill.createdAt)}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function showBillDetail(billId) {
+            const bill = bills.find(b => b.id === billId);
+            if (!bill) return;
+
+            const building = buildings.find(b => b.id === bill.buildingId);
+            const statusClass = bill.status === 'paid' ? 'status-paid' : 'status-unpaid';
+            const statusText = bill.status === 'paid' ? 'Đã thanh toán' : 'Chưa thanh toán';
+
+            const content = `
+                <div class="card">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="text-lg font-bold">Hóa đơn tháng ${bill.period}</h3>
+                            <p class="text-gray-600">${building?.code || 'N/A'} - Phòng ${bill.room}</p>
+                            <p class="text-sm text-gray-500">📍 ${building?.address || 'N/A'}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-sm ${statusClass}">
+                            ${statusText}
+                        </span>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <h4 class="font-semibold mb-3">Chi tiết dịch vụ</h4>
+                        ${bill.services ? bill.services.map(service => `
+                            <div class="flex justify-between py-2">
+                                <div>
+                                    <p class="font-medium">${service.serviceName}</p>
+                                    ${service.type === 'electric' ? `<p class="text-xs text-gray-500">Chỉ số: ${service.oldReading} → ${service.newReading}</p>` : ''}
+                                    ${service.unitPrice ? `<p class="text-xs text-gray-500">Đơn giá: ${formatCurrency(service.unitPrice)}${service.unit ? '/' + service.unit : ''}</p>` : ''}
+                                </div>
+                                <span class="font-bold">${formatCurrency(service.amount)}</span>
+                            </div>
+                        `).join('') : '<p class="text-gray-500">Không có chi tiết dịch vụ</p>'}
+                    </div>
+
+                    <div class="border-t pt-4 mt-4">
+                        <div class="flex justify-between items-center text-lg font-bold">
+                            <span>Tổng cần thanh toán:</span>
+                            <span class="text-blue-600">${formatCurrency(bill.totalAmount || 0)}</span>
+                        </div>
+                    </div>
+
+                    ${bill.status === 'unpaid' ? `
+                        <div class="border-t pt-4 mt-4 text-center">
+                            <h4 class="font-semibold mb-3">Thanh toán qua QR Code</h4>
+                            <div id="qr-code" class="flex justify-center mb-3"></div>
+                            <p class="text-sm text-gray-600">Quét mã QR bằng ứng dụng ngân hàng để thanh toán</p>
+                        </div>
+                    ` : `
+                        <div class="border-t pt-4 mt-4 text-center">
+                            <div class="text-green-600 mb-2">
+                                <svg class="w-12 h-12 mx-auto" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                            </div>
+                            <p class="font-semibold text-green-600">Đã thanh toán</p>
+                            <p class="text-sm text-gray-500">Thanh toán vào: ${formatDate(bill.updatedAt || bill.createdAt)}</p>
+                        </div>
+                    `}
+                </div>
+            `;
+
+            document.getElementById('bill-detail-content').innerHTML = content;
+            document.getElementById('bill-detail-modal').classList.remove('hidden');
+
+            // Generate VietQR code if unpaid
+            if (bill.status === 'unpaid') {
+                const YOUR_BANK_ID = "970416"; // ACB Bank
+                const YOUR_ACCOUNT_NO = "113366668888"; 
+                const qrContent = `THANHTOAN PHONG${bill.room} T${bill.period}${new Date().getFullYear()}`;
+                const qrUrl = `https://img.vietqr.io/image/${YOUR_BANK_ID}-${YOUR_ACCOUNT_NO}-qr_only.jpg?amount=${bill.totalAmount}&addInfo=${encodeURIComponent(qrContent)}`;
+                
+                const qrImg = document.createElement('img');
+                qrImg.src = qrUrl;
+                qrImg.className = 'w-48 h-48 mx-auto border rounded-lg';
+                qrImg.alt = 'QR Code thanh toán';
+                document.getElementById('qr-code').appendChild(qrImg);
+            }
+        }
+
+        function closeBillDetail() {
+            document.getElementById('bill-detail-modal').classList.add('hidden');
+        }
+
+        async function refreshData() {
+            if (currentUser) {
+                await loadUserData(currentUser.id);
+                renderHomeData();
+                alert('Đã làm mới dữ liệu!');
+            }
+        }
+
+        // Global functions
+        window.handleLogin = async function() {
+            const phone = document.getElementById('phone-input').value.trim();
+            
+            if (!phone) {
+                alert('Vui lòng nhập số điện thoại');
+                return;
+            }
+
+            if (!/^0[3|5|7|8|9][0-9]{8}$/.test(phone)) {
+                alert('Số điện thoại không hợp lệ');
+                return;
+            }
+
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Đang đăng nhập...';
+
+            try {
+                const customer = await loadCustomerData(phone);
+                if (!customer) {
+                    alert('Số điện thoại không tồn tại trong hệ thống');
+                    return;
+                }
+
+                localStorage.setItem('userPhone', phone);
+                requestNotificationPermission();
+                await showHome(customer);
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Đăng nhập thất bại. Vui lòng thử lại.');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Đăng Nhập';
+            }
+        };
+
+        window.logout = function() {
+            localStorage.removeItem('userPhone');
+            currentUser = null;
+            bills = [];
+            showLogin();
+            location.reload();
+        };
+
+        window.showBillDetail = showBillDetail;
+        window.closeBillDetail = closeBillDetail;
+        window.refreshData = refreshData;
+
+        // Setup event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+            document.getElementById('phone-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleLogin();
+            });
+        });
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN').format(amount) + ' VNĐ';
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'N/A';
+            let date;
+            if (timestamp.toDate) {
+                date = timestamp.toDate();
+            } else if (typeof timestamp === 'string') {
+                date = new Date(timestamp);
+            } else {
+                date = new Date(timestamp);
+            }
+            return date.toLocaleDateString('vi-VN');
+        }
+
+        // --- NOTIFICATION SYSTEM ---
+        let lastBillCount = 0;
+
+        function requestNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    console.log('Notification permission:', permission);
+                });
+            }
+        }
+
+        function showNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: body,
+                    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiByeD0iMTYiIGZpbGw9IiMzQjgyRjYiLz4KPHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0iI0ZGRkZGRiIgeD0iMTYiIHk9IjE2Ij4KPHA+PC9wPgo8L3N2Zz4KPC9zdmc+',
+                    tag: 'bill-notification'
+                });
+            }
+        }
+
+        function checkForNewBills() {
+            if (currentUser && bills.length > lastBillCount) {
+                const newBillsCount = bills.length - lastBillCount;
+                if (lastBillCount > 0) { // Don't notify on first load
+                    showNotification(
+                        '🧾 Hóa đơn mới!', 
+                        `Bạn có ${newBillsCount} hóa đơn mới. Nhấn để xem chi tiết.`
+                    );
+                }
+                lastBillCount = bills.length;
+            }
+        }
+
+        // Auto refresh every 30 seconds to check for new bills
+        setInterval(async () => {
+            if (currentUser) {
+                const oldCount = bills.length;
+                await loadUserData(currentUser.id);
+                checkForNewBills();
+                if (bills.length !== oldCount) {
+                    renderHomeData();
+                }
+            }
+        }, 30000);
+
+        // Initialize app when page loads
+        initApp();
+    </script>
+</body>
+</html>
