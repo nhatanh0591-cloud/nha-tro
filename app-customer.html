@@ -2,16 +2,31 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Nhà Trọ - Khách Hàng</title>
+    <meta name="description" content="Ứng dụng xem hóa đơn và thanh toán tiền nhà trọ">
     
-    <!-- PWA Support -->
-    <link rel="manifest" href="/manifest.json">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+    
+    <!-- Theme Color -->
     <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#667eea">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#667eea">
+    
+    <!-- iOS Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Nhà Trọ">
     <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="apple-touch-startup-image" href="/icon-512.png">
+    
+    <!-- Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -51,6 +66,26 @@
                     <div class="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 </div>
                 <p class="text-lg">Đang kết nối...</p>
+            </div>
+        </div>
+
+        <!-- Install Button (Hidden by default) -->
+        <div id="install-prompt" class="hidden fixed top-4 left-4 right-4 bg-white rounded-lg shadow-lg p-4 z-50 animate-bounce">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                        <svg class="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L9 5.414V17a1 1 0 102 0V5.414l5.293 5.293a1 1 0 001.414-1.414l-7-7z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold text-gray-800">Cài đặt ứng dụng</p>
+                        <p class="text-xs text-gray-600">Truy cập nhanh hơn</p>
+                    </div>
+                </div>
+                <button id="install-button" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                    Cài đặt
+                </button>
             </div>
         </div>
 
@@ -538,12 +573,60 @@
         initApp();
     </script>
 
-    <!-- Register Service Worker -->
+    <!-- PWA Install & Service Worker -->
     <script>
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js')
-                .then(() => console.log('Service Worker registered'))
-                .catch(err => console.log('Service Worker error:', err));
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installPrompt = document.getElementById('install-prompt');
+        const installButton = document.getElementById('install-button');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install prompt
+            if (installPrompt) {
+                installPrompt.classList.remove('hidden');
+            }
+        });
+
+        if (installButton) {
+            installButton.addEventListener('click', async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response: ${outcome}`);
+                    deferredPrompt = null;
+                    installPrompt.classList.add('hidden');
+                }
+            });
+        }
+
+        // Hide install prompt when already installed
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA installed successfully!');
+            if (installPrompt) {
+                installPrompt.classList.add('hidden');
+            }
+            deferredPrompt = null;
+        });
+
+        // Check if running as PWA
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('✅ Running as PWA!');
         }
     </script>
 </body>
