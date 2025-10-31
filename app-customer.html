@@ -177,7 +177,11 @@
                     <button onclick="refreshData()" class="text-blue-600 text-sm">Làm mới</button>
                 </div>
                 <div id="bills-list">
-                    <!-- Bills will be loaded here -->
+                    <!-- Loading skeleton -->
+                    <div class="card animate-pulse">
+                        <div class="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
+                        <div class="h-3 bg-gray-200 rounded w-1/2"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -270,22 +274,46 @@
             try {
                 console.log('Loading data for customer ID:', customerId);
                 
-                // Load buildings
-                const buildingsQuery = query(collection(db, 'buildings'));
-                const buildingsSnapshot = await getDocs(buildingsQuery);
-                buildings = buildingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                // Load contracts
-                const contractsQuery = query(collection(db, 'contracts'), where('representativeId', '==', customerId));
-                const contractsSnapshot = await getDocs(contractsQuery);
+                // Load từ cache trước (nếu có)
+                const cachedData = localStorage.getItem(`userData_${customerId}`);
+                if (cachedData) {
+                    const parsed = JSON.parse(cachedData);
+                    buildings = parsed.buildings || [];
+                    contracts = parsed.contracts || [];
+                    bills = parsed.bills || [];
+                    console.log('✅ Loaded from cache');
+                    renderHomeData(); // Hiện data cache trước
+                }
+                
+                // Load song song để nhanh hơn
+                const [contractsSnapshot, billsSnapshot] = await Promise.all([
+                    getDocs(query(collection(db, 'contracts'), where('representativeId', '==', customerId))),
+                    getDocs(query(collection(db, 'bills'), where('customerId', '==', customerId)))
+                ]);
+                
                 contracts = contractsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-                // Load bills - TÌM THEO CUSTOMER ID
-                const billsQuery = query(collection(db, 'bills'), where('customerId', '==', customerId));
-                const billsSnapshot = await getDocs(billsQuery);
                 bills = billsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
-                console.log('Bills found:', bills.length);
+                // Load buildings CHỈ KHI CẦN (từ bills)
+                const buildingIds = [...new Set(bills.map(b => b.buildingId))];
+                if (buildingIds.length > 0) {
+                    const buildingsPromises = buildingIds.map(id => 
+                        getDocs(query(collection(db, 'buildings'), where('__name__', '==', id)))
+                    );
+                    const buildingsResults = await Promise.all(buildingsPromises);
+                    buildings = buildingsResults.flatMap(snap => 
+                        snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+                    );
+                } else {
+                    buildings = [];
+                }
+                
+                // Lưu cache
+                localStorage.setItem(`userData_${customerId}`, JSON.stringify({
+                    buildings, contracts, bills, timestamp: Date.now()
+                }));
+                
+                console.log('✅ Loaded fresh data - Bills:', bills.length);
 
             } catch (error) {
                 console.error('Error loading user data:', error);
@@ -302,12 +330,14 @@
             document.getElementById('user-name').textContent = `Xin chào, ${customer.name}`;
             document.getElementById('user-phone').textContent = customer.phone;
             
-            await loadUserData(customer.id);
-            lastBillCount = bills.length; // Set initial count
-            renderHomeData();
-            
+            // Hiện giao diện ngay, chưa cần đợi data
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('home-screen').classList.remove('hidden');
+            
+            // Load data trong background
+            await loadUserData(customer.id);
+            lastBillCount = bills.length;
+            renderHomeData();
         }
 
         function renderHomeData() {
