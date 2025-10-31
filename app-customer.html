@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nhà Trọ - Khách Hàng</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Nhà Trọ">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -527,6 +536,15 @@
 
         // Initialize app when page loads
         initApp();
+    </script>
+
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker error:', err));
+        }
     </script>
 </body>
 </html>
